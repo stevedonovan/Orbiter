@@ -9,6 +9,7 @@ local app = orbiter.new(html)
 local h2,p = html.tags 'h2,p'
 
 function app:handle_dispatch(web,script,args)
+    args = args or '/'  -- default is index
     print('parms',script,args)
     script = script..'.lua'
     local status,err = pcall(dofile,script)
@@ -21,7 +22,7 @@ function app:handle_dispatch(web,script,args)
     end
 end
 
-app:dispatch_get(app.handle_dispatch,'/(.-)(/.*)')
+app:dispatch_get(app.handle_dispatch,'/(.-)(/.*)', '/(.+)')
 
 app:run(...)
 
