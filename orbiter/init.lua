@@ -322,7 +322,7 @@ end
 
 function MT:dispatch(web,path)
     local action,captures,obj = match_patterns(path)
-    if not action then return nil end
+    if not action or obj ~= self then return nil end
     return action(obj,web,unpack(captures))
 end
 

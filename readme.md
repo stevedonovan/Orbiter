@@ -4,7 +4,7 @@ _Steve Donovan, 2010 (MIT/X11)_
 
 Cross-platform users interfaces remain tricky to set up, but web browsers are ubiquitous. So the idea of an application providing its interface over HTTP is popular.
 
-Orbit is my personal favourite among building-from-scratch Web frameworks (as opposed to Wiki engines like Sputnik), but the full Kepler stack can be a bit awkward to set up, especially under the following conditions:
+[Orbit](http://keplerproject.github.com/orbit) is my personal favourite among building-from-scratch Web frameworks (as opposed to Wiki engines like [Sputnik](http://github.com/yuri/sputnik)), but the full [Kepler](http://github.com/keplerproject/kepler) stack can be a bit awkward to set up, especially under the following conditions:
 
  - a small script requires an interface
  - a program with embedded Lua needs an interface
@@ -143,6 +143,7 @@ and make everything get routed through this method:
 
     function dyn:dynamic_dispatch(web)
         local path = web.URL
+        if path:find '_' then path = path:gsub('_','/') end
         local handler = 'handle'..path:gsub('/','_')
         -- find a handler which can match this request
         local method, pattern
@@ -190,6 +191,7 @@ This application uses a very general pattern, and assumes that a URL like `/hell
     local h2,p = html.tags 'h2,p'
 
     function app:handle_dispatch(web,script,args)
+        args = args or '/'  -- default is index
         script = script..'.lua'
         local status,err = pcall(dofile,script)
         if not status then
