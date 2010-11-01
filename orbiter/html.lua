@@ -1,0 +1,174 @@
+-- Orbiter, a personal web application framework
+-- HTML generation using luaexpat LOM format;
+-- this provides some higher-level functions for generating HTML lists
+-- and tables.
+
+local _M = {} -- our module
+--local doc = require 'lxp.doc'
+local doc = require 'orbiter.doc'
+local append = table.insert
+
+local imap,compose,concat_list
+
+_M.tags = doc.tags
+_M.is_doc = doc.is_tag
+_M.elem = doc.elem
+
+function _M.tostring(d)
+    return doc.tostring(d,'','  ')
+end
+
+local defaults = {}
+
+function _M.set_defaults(t)
+    for k,v in pairs(t) do
+        defaults[k] = concat_list(defaults[k],v)
+    end
+end
+
+-- scripts and CSS usually by reference, can be directly embedded
+-- within the document
+local function make_head(head,t,field,tag,rtype,source)
+    local items = concat_list(t[field],defaults[field])
+    if #items == 0 then return end
+    for _,item in ipairs(items) do
+        local hi = {type=rtype}
+        if tag == 'link' then
+            hi.rel = 'stylesheet'
+        end
+        if source then
+            hi[source] = item
+        else
+            hi[1] = item
+        end
+        append(head,doc.elem(tag,hi))
+    end
+end
+
+function _M.document(t)
+    local head = doc.elem('head',doc.elem('title',t.title or 'Orbiter'))
+    make_head(head,t,'styles','link','text/css','href')
+    make_head(head,t,'scripts','script','text/javascript','src')
+    make_head(head,t,'inline_style','link','text/css')
+    make_head(head,t,'inline_script','script','text/javascript')
+    local data = t.body or t
+
+    local body = doc.elem 'body'
+    for i = 1,#data do body[i] = data[i] end
+    return doc.elem('html',{head,body})
+end
+
+--- the module is directly callable.
+-- e.g. html { title = 'hello'; .... }
+setmetatable(_M,{
+    __call = function(o,t)
+        return _M.document(t)
+    end
+})
+
+-- the handlers can now return LOM, tell Orbiter about this...
+function _M.content_filter(self,content,mime)
+    if _M.is_doc(content) then
+        return _M.tostring(content), 'text/'..content.tag
+    end
+    return content,mime
+end
+
+local a = doc.tags 'a'
+
+function _M.url(addr,text)
+    if type(addr) == 'table' then addr,text = addr[1],addr[2] end
+    return a{href=addr,text}
+end
+
+function _M.format(pat)
+    return function(val)
+        return patt:format(val)
+    end
+end
+
+local function item_op(fun,t)
+    if t.render then fun = compose(fun,t.render) end
+    return fun
+end
+
+local function copy_common(src,dest)
+    dest.id = src.id
+    dest.style = src.style
+    dest.class = dest.class
+end
+
+local ul,ol,li = doc.tags 'ul,ol,li'
+
+--- Generate an HTML list.
+-- t must be a single-dimensional array
+-- The list will be unordered by default, set t.type to 'ordered' or '#'
+function _M.list(t)
+    local ctor = (t.type=='ordered' or t.type=='#') and ol or ul
+    local data = t.data or t
+    local each = item_op(li,t)
+    local res = imap(each,data,t.start,t.finish)
+    copy_common(t,res)
+    return ctor(res)
+end
+
+local _table,tr,td,th = doc.tags 'table,tr,td,th'
+
+--- Generate an HTML table.
+-- Data is either t itself or t.data if it exists, and must be a 2D array.
+-- If t.headers is an array of names, then the table will have a header.
+-- You can specify a range of indices to use in the data using t.start and t.finish
+-- (this is useful if using t.data)
+function _M.table(t)
+    assert(type(t) == 'table')
+    local data = t.data or t
+    assert ( #data > 0 and #data[1] > 0)
+    local each = item_op(tr,t)
+    local function row_op(row)
+        return tr (imap(each,row))
+    end
+    local res = imap(row_op,data,t.start,t.finish)
+    if t.headers then
+        local hdrs =  tr (imap(th,t.headers))
+        table.insert(res,1,hdrs)
+    end
+    res.border = t.border --???
+    copy_common(t,res)
+    return _table(res)
+end
+
+------ useful support functions local to this module -----
+
+function imap(fun,t,i1,i2)
+    local res = {}
+    i2 = i2 or #t
+    i1 = i1 or 1
+    local j = 1
+    for i = i1,i2 do
+        res[j] = fun (t[i])
+        j = j + 1
+    end
+    return res
+end
+
+function compose (f1,f2)
+    return function(...)
+        return f1(f2(...))
+    end
+end
+
+local function force_list(l)
+    if type(l) ~= 'table' then l = {l} end
+    return l
+end
+
+function concat_list(l1,l2)
+    l1,l2 = force_list(l1), force_list(l2)
+    local res = {unpack(l1)}
+    for _,v in ipairs(l2) do
+        append(res,v)
+    end
+    return res
+end
+
+return _M  -- orbiter.html !
