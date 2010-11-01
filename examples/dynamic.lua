@@ -29,6 +29,7 @@ local registered = {}
 
 function dyn:dynamic_dispatch(web)
     local path = web.URL
+    if path:find '_' then path = path:gsub('_','/') end
     local handler = 'handle'..path:gsub('/','_')
     -- find a handler which can match this request
     local method, pattern
