@@ -75,7 +75,7 @@ Orbiter provides a convenient test mode where you pass it a URL and see exactly 
             h2 'Simple to do easy stuff',
             p 'complex stuff made manageable',
             html.list {
-                render = html.url;
+                render = html.link;
                 {'/section/first',"First section"},
                 {'/section/second',"Second Section"}
             }

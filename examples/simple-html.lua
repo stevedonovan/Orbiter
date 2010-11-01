@@ -11,7 +11,7 @@ function simple:index(web)
         h2 'Simple to do easy stuff',
         p 'complex stuff made manageable',
         html.list {
-            render = html.url;
+            render = html.link;
             {'/section/first',"First section"},
             {'/section/second',"Second Section"}
         }

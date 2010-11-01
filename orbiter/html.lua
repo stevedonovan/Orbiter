@@ -76,7 +76,7 @@ end
 
 local a = doc.tags 'a'
 
-function _M.url(addr,text)
+function _M.link(addr,text)
     if type(addr) == 'table' then addr,text = addr[1],addr[2] end
     return a{href=addr,text}
 end
