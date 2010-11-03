@@ -109,7 +109,7 @@ So the links `/section/first` and `/section/second` both go to `simple.sections`
 
 The first argument to any handler is usually called `web` and it will contain any variables encoded in the URI. So `/section/first?p=hello` will result in `web.GET.p` being set to 'hello'.
 
-Data from forms is usually sent using the POST method, and then `web.input` contains the variables.  For both methods, `web.headers` contain HTTP request headers, like `user_agent` and `content_type`. (I prefer the Lua-friendly form of these header names.)
+Data from forms is usually sent using the POST method, and then `web.input` contains the variables.  For both methods, `web.vars` contain HTTP request headers, like `HTTP_USER_AGENT` and `HTTP_CONTENT_TYPE`.
 
 ### Fun with Dynamic Dispatch
 

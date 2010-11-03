@@ -243,7 +243,7 @@ end
 local function url_split(vars)
     local res = {}
     for pair in vars:gmatch('[^&]+') do
-        local k,v = pair:match('([^=]+)=(.+)')
+        local k,v = pair:match('([^=]+)=(.*)')
         v = url_decode(v)
         res[k] = v
     end
@@ -272,8 +272,8 @@ local function send_headers (client,code, type, length)
 end
 
 -- process headers from a connection (borrowed from socket.http)
--- note that the variables have '-' replaced as '_' to make them better Lua
--- variables (e.g. content_length)
+-- note that the variables have '-' replaced as '_' to make them WSAPI compatible 
+-- (e.g. HTTP_CONTENT_LENGTH)
 local function receiveheaders(sock)
     local line, name, value, err
     local headers = {}
@@ -285,7 +285,7 @@ local function receiveheaders(sock)
         -- get field-name and value
         name, value = line:match "^(.-):%s*(.*)"
         if not (name and value) then return nil, "malformed reponse headers" end
-        name = name:lower():gsub('%-','_')
+        name = 'HTTP_'..name:upper():gsub('%-','_')
         -- get next line (value might be folded)
         line, err  = sock:receive()
         if err then return nil, err end
@@ -383,10 +383,14 @@ function MT:run(...)
             if tracing then trace('request: '..request) end
             local method = request:match '^([A-Z]+)'
             local headers,err = receiveheaders(client)
+            if err then
+                print('header error',err)
+                os.exit()
+            end
             if method == 'POST' then
-                local size = tonumber(headers.content_length)
+                local size = tonumber(headers.HTTP_CONTENT_LENGTH)
                 vars = client:receive(size)
-                if tracing then trace('vars '..vars) end
+                if tracing then trace('vars '..tostring(vars)) end
             end
             -- resolve requested file from user agent request
             file = request:match('(/%S*)')
@@ -400,9 +404,9 @@ function MT:run(...)
                 -- @doc handlers may specify the MIME type of what they
                 -- return, if they choose; default is HTML.
                 -- @doc GET parms are GET field, POST parms in input.field,
-                -- HTTP headers are in headers field; URL always contains
+                -- HTTP headers are in vars field; URL always contains
                 -- the full URL matched
-                local web = {URL = file, headers = headers}
+                local web = {URL = file, vars = headers}
                 web[method=='GET' and 'GET' or 'input'] = vars
                 status,content,mime = pcall(action,obj,web,unpack(captures))
                 if status then

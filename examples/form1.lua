@@ -42,7 +42,7 @@ local results = orbiter.Template [[
 
 function form:results(web)
    local vars_list = make_list(web.input) -- for POST; use web.GET for GET
-   local headers = make_list(web.headers)
+   local headers = make_list(web.vars)
    return html { body = results { body1 = vars_list, body2 = headers }}
 end
 
