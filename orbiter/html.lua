@@ -74,21 +74,30 @@ function _M.content_filter(self,content,mime)
     return content,mime
 end
 
-local a = doc.tags 'a'
+local a,img = doc.tags 'a,img'
 
 function _M.link(addr,text)
     if type(addr) == 'table' then addr,text = addr[1],addr[2] end
     return a{href=addr,text}
 end
 
-function _M.format(pat)
+function _M.image(src)
+    return img{src=src}
+end
+
+function _M.format(patt)
     return function(val)
-        return patt:format(val)
+        return patt % val
     end
 end
 
 local function item_op(fun,t)
-    if t.render then fun = compose(fun,t.render) end
+    if t.render then
+        if type(t.render) == 'string' then
+            t.render = _M.format(t.render)
+        end
+        fun = compose(fun,t.render)
+     end
     return fun
 end
 

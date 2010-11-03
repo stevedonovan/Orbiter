@@ -1,0 +1,18 @@
+$ lua 
+Lua 5.1.4  Copyright (C) 1994-2008 Lua.org, PUC-Rio
+> O = require 'orbiter'
+> = 'hello %s' % 'dolly'
+hello dolly
+> = '%5.2f' % math.pi
+ 3.14
+> = '%-s = %s' % {10,20}
+10 = 20
+> T = O.Template 'some $value'
+> = T{value='thing'}
+some thing
+> =  '$dog and $cat' % {dog='bonzo',cat='felix'}
+bonzo and felix
+> = '$HOME and $USER' % os.getenv
+/home/steve and steve
+
+render in html.(table,list) can be a format string...
