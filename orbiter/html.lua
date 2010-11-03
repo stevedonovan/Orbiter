@@ -8,7 +8,7 @@ local _M = {} -- our module
 local doc = require 'orbiter.doc'
 local append = table.insert
 
-local imap,compose,concat_list
+local imap,compose,concat_list,reshape2D
 
 _M.tags = doc.tags
 _M.is_doc = doc.is_tag
@@ -74,6 +74,16 @@ function _M.content_filter(self,content,mime)
     return content,mime
 end
 
+local render_function
+
+--  concatenating two functions will compose them...
+debug.setmetatable(print,{
+    __concat = function(f1,f2)
+        f1,f2 = render_function(f1),render_function(f2)
+        return function(...) return f1(f2(...)) end
+    end
+})
+
 local a,img = doc.tags 'a,img'
 
 function _M.link(addr,text)
@@ -91,12 +101,17 @@ function _M.format(patt)
     end
 end
 
+function render_function(f)
+    if type(f) == 'string' then
+        return _M.format(f)
+    else
+        return f
+    end
+end
+
 local function item_op(fun,t)
     if t.render then
-        if type(t.render) == 'string' then
-            t.render = _M.format(t.render)
-        end
-        fun = compose(fun,t.render)
+        fun = compose(fun,render_function(t.render))
      end
     return fun
 end
@@ -115,6 +130,9 @@ local ul,ol,li = doc.tags 'ul,ol,li'
 function _M.list(t)
     local ctor = (t.type=='ordered' or t.type=='#') and ol or ul
     local data = t.data or t
+    if t.map then
+        data = t.map(data)
+    end
     local each = item_op(li,t)
     local res = imap(each,data,t.start,t.finish)
     copy_common(t,res)
@@ -131,8 +149,9 @@ local _table,tr,td,th = doc.tags 'table,tr,td,th'
 function _M.table(t)
     assert(type(t) == 'table')
     local data = t.data or t
-    assert ( #data > 0 and #data[1] > 0)
-    local each = item_op(tr,t)
+    assert (#data > 0) 
+    if t.cols then data = reshape2D(data,t.cols) end
+    local each = item_op(td,t)
     local function row_op(row)
         return tr (imap(each,row))
     end
@@ -144,6 +163,14 @@ function _M.table(t)
     res.border = t.border --???
     copy_common(t,res)
     return _table(res)
+end
+
+function _M.map2list(t)
+    local res = {}
+    for k,v in pairs(t) do
+        append(res,{k,v})
+    end
+    return res
 end
 
 ------ useful support functions local to this module -----
@@ -176,6 +203,19 @@ function concat_list(l1,l2)
     local res = {unpack(l1)}
     for _,v in ipairs(l2) do
         append(res,v)
+    end
+    return res
+end
+
+function reshape2D(t,ncols)
+    local res = {}
+    local row = {}
+    for i = 1,#t do
+        append(row,t[i])
+        if i % ncols == 0 then
+            append(res,row)
+            row = {}
+        end
     end
     return res
 end
