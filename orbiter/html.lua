@@ -6,11 +6,11 @@
 local _M = {} -- our module
 --local doc = require 'lxp.doc'
 local doc = require 'orbiter.doc'
+local text = require 'orbiter.text'
 local append = table.insert
 
 local imap,compose,concat_list,reshape2D
 
-_M.tags = doc.tags
 _M.is_doc = doc.is_tag
 _M.elem = doc.elem
 
@@ -58,6 +58,10 @@ function _M.document(t)
     return doc.elem('html',{head,body})
 end
 
+function _M.as_text(t)
+    return _M.tostring(_M.document(t))
+end
+
 --- the module is directly callable.
 -- e.g. html { title = 'hello'; .... }
 setmetatable(_M,{
@@ -81,8 +85,37 @@ debug.setmetatable(print,{
     __concat = function(f1,f2)
         f1,f2 = render_function(f1),render_function(f2)
         return function(...) return f1(f2(...)) end
-    end
+    end;
+    __index = {
+        specialize = function(fun,defaults)
+            return function(tbl)
+                tbl = table.copy(table.force(tbl))
+                table.update(tbl,defaults)
+                local k = table.index_of(tbl,1)
+                if k then
+                    tbl[k] = tbl[1]
+                    tbl[1] = nil
+                end
+                return fun(tbl)
+            end
+        end
+    }
 })
+
+function _M.tags (list)
+    if type(list) == 'table' and type(list[1])=='table' then
+        local res = {}
+        for i,item in ipairs(list) do res[i] = item[1] end
+        res = {doc.tags(res)}
+        for i,ctor in ipairs(res) do
+            local defs = table.copy_map(list[i])
+            res[i] = ctor:specialize(defs)
+        end
+        return unpack(res)
+    else
+        return doc.tags(list)
+    end
+end
 
 local a,img = doc.tags 'a,img'
 
@@ -122,17 +155,24 @@ local function copy_common(src,dest)
     dest.class = dest.class
 end
 
+local function table_arg(t)
+    assert(type(t) == 'table')
+    local data = t.data or t
+    if t.map then
+        data = t.map(data)
+    end    
+    assert (#data > 0) 
+    return data
+end
+
 local ul,ol,li = doc.tags 'ul,ol,li'
 
 --- Generate an HTML list.
 -- t must be a single-dimensional array
 -- The list will be unordered by default, set t.type to 'ordered' or '#'
 function _M.list(t)
+    local data = table_arg(t)
     local ctor = (t.type=='ordered' or t.type=='#') and ol or ul
-    local data = t.data or t
-    if t.map then
-        data = t.map(data)
-    end
     local each = item_op(li,t)
     local res = imap(each,data,t.start,t.finish)
     copy_common(t,res)
@@ -147,9 +187,7 @@ local _table,tr,td,th = doc.tags 'table,tr,td,th'
 -- You can specify a range of indices to use in the data using t.start and t.finish
 -- (this is useful if using t.data)
 function _M.table(t)
-    assert(type(t) == 'table')
-    local data = t.data or t
-    assert (#data > 0) 
+    local data = table_arg(t)
     if t.cols then data = reshape2D(data,t.cols) end
     local each = item_op(td,t)
     local function row_op(row)
@@ -193,13 +231,8 @@ function compose (f1,f2)
     end
 end
 
-local function force_list(l)
-    if type(l) ~= 'table' then l = {l} end
-    return l
-end
-
 function concat_list(l1,l2)
-    l1,l2 = force_list(l1), force_list(l2)
+    l1,l2 = table.force(l1), table.force(l2)
     local res = {unpack(l1)}
     for _,v in ipairs(l2) do
         append(res,v)
@@ -219,5 +252,39 @@ function reshape2D(t,ncols)
     end
     return res
 end
+
+function table.copy(t)
+    local res = {}
+    for k,v in pairs(t) do res[k] = v end
+    return res
+end
+
+function table.update(t1,t2)
+    for k,v in pairs(t2) do t1[k] = v end
+end
+
+function table.force(t)
+    if type(t) ~= 'table' then return {t}
+    else return t
+    end
+end
+
+function table.copy_map(t)
+    local res = {}
+    local sz = #t
+    for k,v in pairs(t) do
+        if type(k)~='number' or k <= 0 or k > sz then
+            res[k] = v
+        end
+    end
+    return res
+end
+
+function table.index_of(t,val)
+    for k,v in pairs(t) do
+        if v == val then return k end
+    end
+end
+
 
 return _M  -- orbiter.html !

@@ -370,7 +370,9 @@ function _M.tostring(t,idn,indent, attr_indent)
     return t_concat(buf);
 end
 
-Doc.__tostring = _M.tostring
+Doc.__tostring = function(d)
+    return _M.tostring(d,'','  ')
+end
 
 --- get the full text value of an element
 function Doc:get_text()
