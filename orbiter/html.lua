@@ -18,6 +18,18 @@ function _M.tostring(d)
     return doc.tostring(d,'','  ')
 end
 
+function _M.literal(s)
+    return '\001'..s
+end
+
+function _M.script(s)
+    return _M.elem("script",{type="text/javascript",_M.literal(s)})
+end
+
+function _M.register(obj)
+    obj.content_filter = _M.content_filter
+end
+
 local defaults = {}
 
 function _M.set_defaults(t)
@@ -34,22 +46,29 @@ local function make_head(head,t,field,tag,rtype,source)
     for _,item in ipairs(items) do
         local hi = {type=rtype}
         if tag == 'link' then
-            hi.rel = 'stylesheet'
+            if not rtype:find '/' then -- it's not a MIME type
+                hi.rel = rtype
+            else
+                hi.rel = 'stylesheet'
+            end
         end
         if source then
             hi[source] = item
-        else
-            hi[1] = item
+            item = ''
         end
+        hi[1] = _M.literal(item)
         append(head,doc.elem(tag,hi))
     end
 end
 
 function _M.document(t)
     local head = doc.elem('head',doc.elem('title',t.title or 'Orbiter'))
+    t.favicon = t.favicon or '/resources/favicon.ico'
+    --<LINK REL="SHORTCUT ICON" HREF="http://www.yourdomain.com/name_of_icon.ico">
+    make_head(head,t,'favicon','link','shortcut icon','href')
     make_head(head,t,'styles','link','text/css','href')
     make_head(head,t,'scripts','script','text/javascript','src')
-    make_head(head,t,'inline_style','link','text/css')
+    make_head(head,t,'inline_style','style','text/css')
     make_head(head,t,'inline_script','script','text/javascript')
     local data = t.body or t
 
@@ -179,6 +198,31 @@ function _M.list(t)
     return ctor(res)
 end
 
+local function set_table_style(res,data,styles)
+    local function set_style(row,col,style)
+        local attr = {}
+        -- important: is this an inline CSS style, or a class name?
+        if style:find ':' then attr.style = style else attr.class = style end
+        res[row][col].attr = attr
+    end
+    local alias
+    if styles.alias then
+        alias = styles.alias
+        styles.alias = nil
+    end
+    for style,where in pairs(styles) do
+        local svalue = alias[style] or style
+        local row,col = where.row,where.col
+        if row and col then
+            set_style(row,col,svalue)
+        elseif row then
+            for col = 1,#data[1] do set_style(row,col,svalue) end
+        elseif col then
+            for row = 1,#data do set_style(row,col,svalue) end
+        end
+    end
+end
+
 local _table,tr,td,th = doc.tags 'table,tr,td,th'
 
 --- Generate an HTML table.
@@ -200,9 +244,12 @@ function _M.table(t)
     end
     res.border = t.border --???
     copy_common(t,res)
-    return _table(res)
+    local res = _table(res)
+    if t.styles then set_table_style(res,data,t.styles) end
+    return res
 end
 
+--- this converts a map-like table into a list of {key,value} pairs.
 function _M.map2list(t)
     local res = {}
     for k,v in pairs(t) do

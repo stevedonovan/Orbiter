@@ -12,10 +12,14 @@ local help_text = [[
  **** Orbiter vs 0.1 ****
 --addr=IP address (default localhost)
 --port=HTTP port (default 8080)
---browser=particular browser (default system)
 --trace   print out some useful verbosity
---nolaunch  don't launch the browser; just run the server.
+--launch  open the browser; may point to a particular browser, otherwise system.
 ]]
+
+local function quit(msg)
+    io.stderr:write(msg,'\n')
+    os.exit(1)
+end
 
 --- Extract flags from an arguments list.
 -- (grabbed from luarocks.util)
@@ -52,7 +56,8 @@ end
 local MT = {}
 MT.__index = MT
 
-function _M.new(extension)
+function _M.new(...)
+    local extensions = {...}
     local obj = setmetatable({},MT)
     -- remember to strip off the starting @
     local path = debug.getinfo(2, "S").source:sub(2):gsub('\\','/')
@@ -63,8 +68,15 @@ function _M.new(extension)
     end
     obj.root = path
     obj.resources = obj.root..'/resources'
-    if extension then
-        obj.content_filter = extension.content_filter
+    if #extensions > 0 then
+        for _,e in ipairs(extensions) do
+            if type(e) == 'string' then
+                local stat,ext = pcall(require,'orbiter.'..e)
+                if not stat then quit("cannot load extension: "..e) end
+                e = ext
+            end
+            e.register(obj)
+        end
     end
     return obj
 end
@@ -91,6 +103,9 @@ local function which(prog)
 end
 
 function launch_browser (url,browser)
+    if browser == true then 
+        browser = nil -- autodetect!
+    end
     if Windows then
         os.execute('rundll32 url.dll,FileProtocolHandler '..url)
         return
@@ -113,7 +128,7 @@ end
 local dispatch_set_handler
 
 local function static_handler(obj,web)
-    local content,mime = obj:read_content(web.URL)
+    local content,mime = obj:read_content(web.path_info)
     if not content then
         return '404 Not Found',false
     else
@@ -122,22 +137,30 @@ local function static_handler(obj,web)
 end
 
 function MT:dispatch_get(callback,...)
-    dispatch_set_handler(self,callback,...)
+    dispatch_set_handler('GET',self,callback,...)
+end
+
+function MT:dispatch_post(callback,...)
+    dispatch_set_handler('POST',self,callback,...)
+end
+
+function MT:dispatch_any(callback,...)
+    dispatch_set_handler('*',self,callback,...)
 end
 
 function MT:dispatch_static(...)
-    dispatch_set_handler(self,static_handler,...)
+    dispatch_set_handler('GET',self,static_handler,...)
 end
 
 local patterns = {}
 
-function dispatch_set_handler(obj,callback,...)
+function dispatch_set_handler(method,obj,callback,...)
     local pats = {...}
     if #pats == 1 then
         local pat = pats[1]
         assert(type(pat) == 'string')
         pat = '^'..pat..'$'
-        local pat_rec = {pat=pat,callback=callback,self=obj}
+        local pat_rec = {pat=pat,callback=callback,self=obj,method=method}
         -- objects can override existing patterns, so we look for this pattern
         local idx
         for i = 1,#patterns do
@@ -150,7 +173,7 @@ function dispatch_set_handler(obj,callback,...)
         end
     else
         for _,pat in ipairs (pats) do
-            dispatch_set_handler(obj,callback,pat)
+            dispatch_set_handler(method,obj,callback,pat)
         end
     end
 end
@@ -160,19 +183,22 @@ end
 -- Very general patterns (like /(.-)(/.*)) can be long, but very general.
 -- So we use the length after stripping out any magic characters.
 -- returns the callback, the pattern captures, and the object (if any)
-local function match_patterns(request)
+local function match_patterns(method,request,obj)
     local max_pat = 0
     local max_captures
-    if tracing then trace('input request '..request) end
     for i = 1,#patterns do
-        local pat = patterns[i].pat
-        local captures = {request:match(pat)}
-        local pat_size = #(pat:gsub('[%(%)%.%+%-%*]',''))
-        if #captures > 0 and pat_size > max_pat then
-            max_i = i
-            max_pat = pat_size
-            max_captures = captures
-            if tracing then trace('matching '..pat..' '..pat_size) end
+        local tpat = patterns[i]
+        if (tpat.method == '*' or tpat.method == method) and (obj==nil or tpat.self==obj) then
+            local pat = tpat.pat
+            --print('trying',pat,request)
+            local captures = {request:match(pat)}
+            local pat_size = #(pat:gsub('[%(%)%.%+%-%*]',''))
+            if #captures > 0 and pat_size > max_pat then
+                max_i = i
+                max_pat = pat_size
+                max_captures = captures
+                if tracing then trace('matching '..pat..' '..pat_size) end
+            end
         end
     end
     if max_captures then
@@ -180,10 +206,36 @@ local function match_patterns(request)
     end
 end
 
+local request_filters = {}
+
+local function process_request_filters(web,file)
+    for _,f in ipairs(request_filters) do
+        local newp,obj = f(web,file)
+        if newp then return newp,obj end
+    end
+    return file
+end
+
+function _M.add_request_filter(f)
+    append(request_filters,f)
+end
+
+function _M.remove_request_filter(f)
+    local idx
+    for i, ff in ipairs(request_filters) do
+        if ff == f then idx = i; break end
+    end
+    if idx then table.remove(request_filter,idx) end
+end
+
+function _M.get_pattern_table()
+    return patterns
+end
+
 -- this is the object used by Orbiter itself to provide one basic piece of furniture,
 -- the favicon.
 local self = _M.new()
-self:dispatch_static '/favicon%.ico'
+self:dispatch_static '/resources/favicon%.ico'
 
 --------------- HTTP Server --------------------
 ----  A little web server, based on code by Samuel Saint-Pettersen ----
@@ -270,16 +322,16 @@ local function receiveheaders(sock)
 end
 
 function MT:get_path_to(file)
-    local res = self.resources .. file
-    return res
+    return self.root .. file
 end
 
 function MT:read_content(file)
     if file == '/' then file = '/index.html' end
     local extension = file:match('%.(%a+)$') or 'other'
-    local content = readfile (self:get_path_to(file))
+    local path = self:get_path_to(file)
+    local content = readfile (path)
     if content then
-        if tracing then trace('returning '..self.resources .. file) end
+        if tracing then trace('returning '..path) end
         local mime = mime_types[extension] or 'text/plain'
         return content,mime
     else
@@ -288,7 +340,7 @@ function MT:read_content(file)
 end
 
 function MT:dispatch(web,path)
-    local action,captures,obj = match_patterns(path)
+    local action,captures,obj = match_patterns('GET',path) --??
     if not action or obj ~= self then return nil end
     return action(obj,web,unpack(captures))
 end
@@ -324,12 +376,12 @@ function MT:run(...)
         os.exit()
     end
 
-    if fake then addr = fake
+    if fake then addr = fake==true and '/' or fake
     else print ("Orbiter serving on "..URL)
     end
 
-    if not flags['nolaunch'] and not fake then
-        launch_browser(URL,flags['browser'])
+    if  flags['launch'] and not fake then
+        launch_browser(URL,flags['launch'])
     end
 
     -- create TCP socket on addr:port: allow for a debug hook
@@ -337,27 +389,21 @@ function MT:run(...)
     local server = assert(server_ctor(addr, tonumber(port)))
     -- loop while waiting for a user agent request
     while 1 do
-        -- wait for a connection
+        -- wait for a connection, set timeout and receive request from user agent
         local client = server:accept()
-        -- set timeout - 1 minute
         client:settimeout(60)
-        -- receive request from user agent
         local request, err = client:receive()
-        --print('request',request,err)
-        -- if there's no error, return the requested page
         if not err then
-            local content,file,action,captures,obj
+            local content,file,action,captures,obj,web,vars,headers,err
             if tracing then trace('request: '..request) end
             local method = request:match '^([A-Z]+)'
-            local headers,err = receiveheaders(client)
-            if err then
-                print('header error',err)
-                os.exit()
+            if not fake then
+                headers,err = receiveheaders(client)
             end
+            if err then quit('header error: '..err)  end
             if method == 'POST' then
                 local size = tonumber(headers.HTTP_CONTENT_LENGTH)
-                vars = client:receive(size)
-                if tracing then trace('vars '..tostring(vars)) end
+                vars = client:receive(size)               
             end
             -- resolve requested file from user agent request
             file = request:match('(/%S*)')
@@ -366,15 +412,14 @@ function MT:run(...)
                 if url then file = url end
             end
             vars = vars and url_split(vars) or {}
-            action,captures,obj = match_patterns(file)
+            web = {vars = headers, input = vars,
+                        method = method:lower(), path_info = file}
+            web[method=='GET' and 'GET' or 'POST'] = vars
+            file,obj = process_request_filters(web,file)
+            action,captures,obj = match_patterns(method,file,obj)
             if action then
                 -- @doc handlers may specify the MIME type of what they
                 -- return, if they choose; default is HTML.
-                -- @doc GET parms are GET field, POST parms in input.field,
-                -- HTTP headers are in vars field; URL always contains
-                -- the full URL matched
-                local web = {URL = file, vars = headers}
-                web[method=='GET' and 'GET' or 'input'] = vars
                 status,content,mime = pcall(action,obj,web,unpack(captures))
                 if status then
                     if not content then

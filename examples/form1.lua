@@ -1,8 +1,9 @@
 local orbiter = require 'orbiter'
+local text = require 'orbiter.text'
 
 local form = orbiter.new()
 
-local html = orbiter.Template [[
+local html = text.Template [[
     <html><body>
     $body
     </body></html>
@@ -33,7 +34,7 @@ local function make_list(t)
    return table.concat(res,'\n')
 end
 
-local results = orbiter.Template [[
+local results = text.Template [[
     <h2>Form Variables</h2>
     $body1
     <h2>HTTP Headers</h2>
@@ -47,6 +48,6 @@ function form:results(web)
 end
 
 form:dispatch_get(form.show,'/','/index.html')
-form:dispatch_get(form.results,'/results')
+form:dispatch_post(form.results,'/results')
 
 form:run(...)
