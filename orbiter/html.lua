@@ -64,7 +64,6 @@ end
 function _M.document(t)
     local head = doc.elem('head',doc.elem('title',t.title or 'Orbiter'))
     t.favicon = t.favicon or '/resources/favicon.ico'
-    --<LINK REL="SHORTCUT ICON" HREF="http://www.yourdomain.com/name_of_icon.ico">
     make_head(head,t,'favicon','link','shortcut icon','href')
     make_head(head,t,'styles','link','text/css','href')
     make_head(head,t,'scripts','script','text/javascript','src')
@@ -73,7 +72,13 @@ function _M.document(t)
     local data = t.body or t
 
     local body = doc.elem 'body'
-    for i = 1,#data do body[i] = data[i] end
+    for _,d in ipairs(data) do 
+        if table.is_list(d) then
+            for _,dd in ipairs(d) do append(body,dd) end
+        else
+            append(body,d)
+        end        
+    end
     return doc.elem('html',{head,body})
 end
 
@@ -140,6 +145,7 @@ local a,img = doc.tags 'a,img'
 
 function _M.link(addr,text)
     if type(addr) == 'table' then addr,text = addr[1],addr[2] end
+    if not text then text = addr end
     return a{href=addr,text}
 end
 
@@ -171,7 +177,7 @@ end
 local function copy_common(src,dest)
     dest.id = src.id
     dest.style = src.style
-    dest.class = dest.class
+    dest.class = src.class
 end
 
 local function table_arg(t)
@@ -298,6 +304,10 @@ function reshape2D(t,ncols)
         end
     end
     return res
+end
+
+function table.is_list(t)
+    return type(t) == 'table' and #t > 0 and getmetatable(t) == nil
 end
 
 function table.copy(t)
