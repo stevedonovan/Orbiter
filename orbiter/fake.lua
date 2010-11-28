@@ -16,6 +16,7 @@ function fake_new (out,lines)
     function client:settimeout ()
     end
     function client:close ()
+        out:write '\n'
         os.exit()
     end
     return client

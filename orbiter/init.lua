@@ -13,6 +13,8 @@ local help_text = [[
 --addr=IP address (default localhost)
 --port=HTTP port (default 8080)
 --trace   print out some useful verbosity
+--test=pattern  print out what will be sent to the user agent
+--no_headers when using --test, don't print out HTTP headers
 --launch  open the browser; may point to a particular browser, otherwise system.
 ]]
 
@@ -363,6 +365,7 @@ function MT:run(...)
     local port = flags['port'] or '8080'
     local URL = 'http://'..addr..':'..port
     local fake = flags['test']
+    local testing = flags['no_headers'] and fake
     last_obj = self
 
     if running then return
@@ -422,24 +425,28 @@ function MT:run(...)
                 -- return, if they choose; default is HTML.
                 status,content,mime = pcall(action,obj,web,unpack(captures))
                 if status then
-                    if not content then
+                    if not content and method ~= 'POST' then
                         status = false
                         content = '404 Request Failed'
                     elseif mime == false then
                         status = false
                     end
                 end
-                if status then
-                    -- @doc if the app or extension object defines a content_filter method,
-                    -- it will receive the content and mime type, and is expected to
-                    -- return the same.
-                    if self.content_filter then
-                        content,mime = self:content_filter(content,mime)
-                     end
-                    send_headers(client,OK,mime or 'text/html',#content)
-                    client:send(content)
-                else
-                    send_error(client,content)
+                if content then -- can naturally be nil for POST requests!
+                    if status then
+                        -- @doc if the app or extension object defines a content_filter method,
+                        -- it will receive the content and mime type, and is expected to
+                        -- return the same.
+                        if self.content_filter then
+                            content,mime = self:content_filter(content,mime)
+                         end
+                        if not testing then
+                            send_headers(client,OK,mime or 'text/html',#content)
+                        end
+                        client:send(content)
+                    else
+                        send_error(client,content)
+                    end
                 end
             else -- unmatched pattern!!
                 send_error (client,'404 Not Found')
