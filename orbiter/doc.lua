@@ -119,11 +119,19 @@ function Doc:add_direct_child(child)
     t_insert(self, child);
 end
 
---- append a child to a document at the last element added
+--- append a child to a document at the last element added.
 -- @param child a child node (either text or a document)
 function Doc:add_child(child)
     (self.last_add[#self.last_add] or self):add_direct_child(child);
     return self;
+end
+
+--- set attributes of a document node.
+-- @param t a table containing attribute/value pairs
+function Doc:set_attribs (t)
+    for k,v in pairs(t) do
+        self.attr[k] = v
+    end
 end
 
 
