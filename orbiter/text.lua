@@ -8,6 +8,20 @@ local function basic_subst(s,t)
     return (s:gsub('%$([%w_]+)',t))
 end
 
+local format = string.format
+
+local function formatx (fmt,...)
+    local args = {...}
+    local i = 1
+    for p in fmt:gmatch('%%s') do
+        if type(args[i]) ~= 'string' then
+            args[i] = tostring(args[i])
+        end
+        i = i + 1
+    end
+    return format(fmt,unpack(args))
+end
+
 --- Python-like string formatting with % operator.
 -- Note this goes further than the original, and will allow these cases:
 -- 1. a single value
@@ -22,12 +36,12 @@ getmetatable("").__mod = function(a, b)
             if #b == 0 then -- assume a map-like table
                 return basic_subst(a,b)
             else
-                return a:format(unpack(b))
+                return formatx(a,unpack(b))
             end
     elseif type(b) == 'function' then
         return basic_subst(a,b)
     else
-            return a:format(b)
+            return formatx(a,b)
     end
 end
 
