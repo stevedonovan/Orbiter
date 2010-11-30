@@ -4,6 +4,10 @@
 -- (see http://lua-users.org/wiki/StringInterpolation
 local _M  = {}
 
+function _M.lua_escape(s)
+    return (s:gsub('[%-%.%+%[%]%(%)%$%^%%%?%*]','%%%1'))
+end
+
 local function basic_subst(s,t)
     return (s:gsub('%$([%w_]+)',t))
 end
