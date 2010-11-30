@@ -12,6 +12,7 @@ local append = table.insert
 local imap,compose,concat_list,reshape2D
 
 _M.is_doc = doc.is_tag
+_M.is_elem = doc.is_tag
 _M.elem = doc.elem
 
 function _M.tostring(d)
@@ -41,7 +42,7 @@ end
 -- scripts and CSS usually by reference, can be directly embedded
 -- within the document
 local function make_head(head,t,field,tag,rtype,source)
-    local items = concat_list(t[field],defaults[field])
+    local items = concat_list(defaults[field],t[field])
     if #items == 0 then return end
     for _,item in ipairs(items) do
         local hi = {type=rtype}
