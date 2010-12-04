@@ -174,9 +174,10 @@ function dispatch_set_handler(method,obj,callback,...)
         pat = '^'..pat..'$'
         local pat_rec = {pat=pat,callback=callback,self=obj,method=method}
         -- objects can override existing patterns, so we look for this pattern
+        -- and replace the handler, if the method is the same
         local idx
-        for i = 1,#patterns do
-            if patterns[i].pat == pat then idx = i; break  end
+        for i,p in ipairs(patterns) do
+            if p.pat == pat and p.method == method then idx = i; break  end
         end
         if idx then
             patterns[idx] = pat_rec
