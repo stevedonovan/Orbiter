@@ -60,7 +60,17 @@ MT.__index = MT
 
 function _M.new(...)
     local extensions = {...}
-    local obj = setmetatable({},MT)
+    local obj
+    -- if passed a module, then assume we're being called from module();
+    -- use the module as the object, and manually add our methods to it.
+    if extensions[1] and extensions[1]. _M then 
+        obj = extensions[1]
+        local m = extensions[1]._M
+        for k,v in pairs(MT) do m[k] = v end
+        table.remove(extensions,1)
+    else
+        obj = setmetatable({},MT)
+    end    
     -- remember to strip off the starting @
     local path = debug.getinfo(2, "S").source:sub(2):gsub('\\','/')
     if path:find '/' then
@@ -431,6 +441,8 @@ function MT:run(...)
                     elseif mime == false then
                         status = false
                     end
+                else
+                    print('exception: '..tostring(content))                
                 end
                 if content then -- can naturally be nil for POST requests!
                     if status then
