@@ -1,5 +1,8 @@
 -- illustrates another kind of dynamic dispatch - a little 'app server'.
 -- if passed '/hello/rest' it will load hello.lua and pass /rest to it.
+--- / (index) now prints a useful set of links to apps.
+---
+--- An entertaining feature is that scripts will be reloaded if they are modified.
 
 local orbiter = require 'orbiter'
 local html = require 'orbiter.html'
@@ -20,6 +23,12 @@ local object_of = {}
 local current_script
 local old_new = orbiter.new
 
+-- classic case of monkey-patching; we will be loading these apps into our single
+-- Lua state, and want to manage the namespaces. For instance, hello.lua just has '/'
+-- which we would like to remap to '/hello'.  So this patch ensures that the patterns 
+-- used by any loaded app will be prepended with the script name, which defines
+-- a namespace.  (This hack assumes that current_script is set before the script
+-- is loaded)
 function orbiter.new(...)
     local obj = old_new(...)
     local prefix = '/'..current_script:gsub('%-','%%-')
@@ -46,8 +55,11 @@ function orbiter.new(...)
     return obj
 end
 
+--- the second part of the hack;  if a request comes from a particular app, then 
+--- the namespace must be added.  If bonzo.lua links to '/start' then this filter 
+--- intercepts the original request and rewrites it as '/bonzo/start'.
 orbiter.add_request_filter(function(web,file)
-    if web.vars.HTTP_REFERER then
+    if web.vars and web.vars.HTTP_REFERER then
         local referer = web.vars.HTTP_REFERER:match('http://[^/]+(.+)')
         local script = referer:match('^/[^/]+')
         if script then
@@ -59,7 +71,7 @@ end)
 local h2,p = html.tags 'h2,p'
 
 function app:handle_dispatch(web,script,args)
-    args = args or '/'  -- default is index
+    args = args or '/'  -- default is index    
     current_script = script
     local obj = object_of [script]
     local lfile = script..'.lua'
@@ -81,7 +93,24 @@ function app:handle_dispatch(web,script,args)
     end
 end
 
+function app:handle_index(web)
+    return html {
+       h2 'Examples Available',
+       p 'A simple application server',
+       html.list {
+            render = html.link,
+            '/dropdown',
+            '/form1',
+            '/form2',
+            '/hello',
+            '/simple-html',
+            '/trylua'          
+       }
+    }
+end
+
 app:dispatch_any(app.handle_dispatch,'/(.-)(/.*)', '/(.+)')
+app:dispatch_get(app.handle_index,'/')
 
 app:run(...)
 
