@@ -17,8 +17,8 @@ local format = string.format
 local function formatx (fmt,...)
     local args = {...}
     local i = 1
-    for p in fmt:gmatch('%%s') do
-        if type(args[i]) ~= 'string' then
+    for p in fmt:gmatch('%%.') do
+        if p == '%s' and type(args[i]) ~= 'string' then
             args[i] = tostring(args[i])
         end
         i = i + 1
@@ -34,18 +34,18 @@ end
 -- 4. a function, as in gsub
 -- For the second two cases, it uses $-variable substituion.
 getmetatable("").__mod = function(a, b)
-    if not b then
-            return a
-    elseif type(b) == "table" then
-            if #b == 0 then -- assume a map-like table
-                return basic_subst(a,b)
-            else
-                return formatx(a,unpack(b))
-            end
+    if b == nil then
+        return a
+    elseif type(b) == "table" and getmetatable(b) == nil then
+        if #b == 0 then -- assume a map-like table
+            return basic_subst(a,b)
+        else
+            return formatx(a,unpack(b))
+        end
     elseif type(b) == 'function' then
         return basic_subst(a,b)
     else
-            return formatx(a,b)
+        return formatx(a,b)
     end
 end
 
