@@ -126,6 +126,9 @@ function Doc:add_child(child)
     return self;
 end
 
+--accessing attributes: useful not to have to expose implementation (attr)
+--but also can allow attr to be nil in any future optimizations
+
 --- set attributes of a document node.
 -- @param t a table containing attribute/value pairs
 function Doc:set_attribs (t)
@@ -134,12 +137,25 @@ function Doc:set_attribs (t)
     end
 end
 
+--- set a single attribute of a document node.
+-- @param a attribute
+-- @param v its value
+function Doc:set_attrib(a,v)
+    self.attr[a] = v
+end
+
+--- access the attributes of a document node.
+function Doc:get_attribs()
+    return self.attr
+end
+
 
 --- function to create an element with a given tag name and a set of children.
 -- @param tag a tag name
 -- @param items either text or a table where the hash part is the attributes and the list part is the children.
 function _M.elem(tag,items)
     local s = _M.new(tag,nil,true)
+    local append = t_insert
     if type(items) == 'string' then items = {items} end
     if _M.is_tag(items) then
        t_insert(s,items)
@@ -147,9 +163,13 @@ function _M.elem(tag,items)
        for k,v in pairs(items) do
            if type(k) == 'string' then
                s.attr[k] = v
-               t_insert(s.attr,k)
+               append(s.attr,k)
+           elseif type(v) == 'table' and not _M.is_tag(v) then
+                for i,vv in ipairs(v) do
+                    append(s,vv)
+                end
            else
-               s[k] = v
+               append(s,v)
            end
        end
     end
@@ -316,8 +336,16 @@ end
 
 local xml_escape
 do
+    local function tostring_q(str) -- for semi-paranoid checking
+        local tt = type(str)
+        if tt ~= 'string' then
+            str = tostring(str)
+            print('**warning**',tt,'is not a string',str)
+        end
+        return str
+    end
     local escape_table = { ["'"] = "&apos;", ["\""] = "&quot;", ["<"] = "&lt;", [">"] = "&gt;", ["&"] = "&amp;" };
-    function xml_escape(str) return (s_gsub(str, "['&<>\"]", escape_table)); end
+    function xml_escape(str) return (s_gsub(tostring_q(str), "['&<>\"]", escape_table)); end
     _M.xml_escape = xml_escape;
 end
 
