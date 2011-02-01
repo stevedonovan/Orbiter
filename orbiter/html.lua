@@ -4,12 +4,14 @@
 -- and tables.
 
 local _M = {} -- our module
---local doc = require 'lxp.doc'
 local doc = require 'orbiter.doc'
 local text = require 'orbiter.text'
+local util = require 'orbiter.util'
 local append = table.insert
 
-local imap,compose,concat_list,reshape2D
+local imap,concat_list,reshape2D  = table.imap,table.concat_list,table.reshape2D
+
+local compose = util.compose
 
 _M.is_doc = doc.is_tag
 _M.is_elem = doc.is_tag
@@ -18,6 +20,8 @@ _M.elem = doc.elem
 function _M.tostring(d)
     return doc.tostring(d,'','  ')
 end
+
+_M.raw_tostring = doc.tostring
 
 function _M.literal(s)
     return '\001'..s
@@ -29,6 +33,14 @@ end
 
 function _M.register(obj)
     obj.content_filter = _M.content_filter
+end
+
+-- convenience function for Orbit programs to register themselves with the bridge--
+function _M.new(obj)
+    if orbit then
+        local bridge = require 'orbiter.bridge'
+        bridge.new(obj)
+    end
 end
 
 local defaults = {}
@@ -71,16 +83,11 @@ function _M.document(t)
     make_head(head,t,'inline_style','style','text/css')
     make_head(head,t,'inline_script','script','text/javascript')
     local data = t.body or t
+    local xmlns
+    if t.xml then xmlns = "http://www.w3.org/1999/xhtml" end
 
-    local body = doc.elem 'body'
-    for _,d in ipairs(data) do 
-        if table.is_list(d) then
-            for _,dd in ipairs(d) do append(body,dd) end
-        else
-            append(body,d)
-        end        
-    end
-    return doc.elem('html',{head,body})
+    local body = table.copy_list(data)
+    return doc.elem('html',{xmlns=xmlns,head,doc.elem('body',body)})
 end
 
 function _M.as_text(t)
@@ -96,9 +103,13 @@ setmetatable(_M,{
 })
 
 -- the handlers can now return LOM, tell Orbiter about this...
+-- Will adjust MIME type for XHTML
 function _M.content_filter(self,content,mime)
     if _M.is_doc(content) then
-        return _M.tostring(content), 'text/'..content.tag
+        if content.attr.xmlns and not mime then
+            mime = "application/xhtml+xml"
+        end
+        return _M.tostring(content), mime
     end
     return content,mime
 end
@@ -187,7 +198,7 @@ local function table_arg(t)
     if t.map then
         data = t.map(data)
     end    
-    assert (#data > 0) 
+--    assert (#data > 0) 
     return data
 end
 
@@ -212,7 +223,7 @@ local function set_table_style(res,data,styles)
         if style:find ':' then attr.style = style else attr.class = style end
         res[row][col].attr = attr
     end
-    local alias
+    local alias = {}
     if styles.alias then
         alias = styles.alias
         styles.alias = nil
@@ -264,85 +275,5 @@ function _M.map2list(t)
     end
     return res
 end
-
------- useful support functions local to this module -----
-
-function imap(fun,t,i1,i2)
-    local res = {}
-    i2 = i2 or #t
-    i1 = i1 or 1
-    local j = 1
-    for i = i1,i2 do
-        res[j] = fun (t[i])
-        j = j + 1
-    end
-    return res
-end
-
-function compose (f1,f2)
-    return function(...)
-        return f1(f2(...))
-    end
-end
-
-function concat_list(l1,l2)
-    l1,l2 = table.force(l1), table.force(l2)
-    local res = {unpack(l1)}
-    for _,v in ipairs(l2) do
-        append(res,v)
-    end
-    return res
-end
-
-function reshape2D(t,ncols)
-    local res = {}
-    local row = {}
-    for i = 1,#t do
-        append(row,t[i])
-        if i % ncols == 0 then
-            append(res,row)
-            row = {}
-        end
-    end
-    return res
-end
-
-function table.is_list(t)
-    return type(t) == 'table' and #t > 0 and getmetatable(t) == nil
-end
-
-function table.copy(t)
-    local res = {}
-    for k,v in pairs(t) do res[k] = v end
-    return res
-end
-
-function table.update(t1,t2)
-    for k,v in pairs(t2) do t1[k] = v end
-end
-
-function table.force(t)
-    if type(t) ~= 'table' then return {t}
-    else return t
-    end
-end
-
-function table.copy_map(t)
-    local res = {}
-    local sz = #t
-    for k,v in pairs(t) do
-        if type(k)~='number' or k <= 0 or k > sz then
-            res[k] = v
-        end
-    end
-    return res
-end
-
-function table.index_of(t,val)
-    for k,v in pairs(t) do
-        if v == val then return k end
-    end
-end
-
 
 return _M  -- orbiter.html !
