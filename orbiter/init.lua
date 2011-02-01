@@ -9,7 +9,7 @@ local Windows = DIRSEP == '\\'
 local t_remove, t_insert, append = table.remove, table.insert, table.insert
 local tracing, browser
 local help_text = [[
- **** Orbiter vs 0.1 ****
+ **** Orbiter vs 0.2 ****
 --addr=IP address (default localhost)
 --port=HTTP port (default 8080)
 --trace   print out some useful verbosity
@@ -61,11 +61,12 @@ MT.__index = MT
 function _M.new(...)
     local extensions = {...}
     local obj
-    -- if passed a module, then assume we're being called from module();
+    -- if passed a table which doesn't have register, then assume we're being called
+    --    from module() 
     -- use the module as the object, and manually add our methods to it.
-    if extensions[1] and extensions[1]. _M then 
+    if extensions[1] and not extensions[1]. register then 
         obj = extensions[1]
-        local m = extensions[1]._M
+        local m = extensions[1]
         for k,v in pairs(MT) do m[k] = v end
         table.remove(extensions,1)
     else
@@ -203,7 +204,7 @@ local function match_patterns(method,request,obj)
         local tpat = patterns[i]
         if (tpat.method == '*' or tpat.method == method) and (obj==nil or tpat.self==obj) then
             local pat = tpat.pat
-            --print('trying',pat,request)
+            if tracing == 'all' then print('trying',pat,request) end
             local captures = {request:match(pat)}
             local pat_size = #(pat:gsub('[%(%)%.%+%-%*]',''))
             if #captures > 0 and pat_size > max_pat then
@@ -265,11 +266,12 @@ local mime_types = {
 }
 
 local function url_decode(url)
-    url = url:gsub('%+','  ')
-    return (url:gsub('%%(%x%x)',function(c)
+    url = url:gsub('%+',' ')
+    url = url:gsub('%%(%x%x)',function(c)
         c = tonumber(c,16)
-        return ('%s'):format(string.char(c))
-    end))
+        return string.char(c)  -- ('%s'):format(?
+    end)
+    return url
 end
 
 local function url_split(vars)
@@ -277,7 +279,12 @@ local function url_split(vars)
     for pair in vars:gmatch('[^&]+') do
         local k,v = pair:match('([^=]+)=(.*)')
         v = url_decode(v)
-        res[k] = v
+        if res[k] then -- multiple values for this name
+            if type(res[k]) == 'string' then res[k] = {res[k]} end
+            append(res[k],v)
+        else
+            res[k] = v
+        end
     end
     return res
 end
@@ -418,6 +425,7 @@ function MT:run(...)
             if method == 'POST' then
                 local size = tonumber(headers.HTTP_CONTENT_LENGTH)
                 vars = client:receive(size)               
+                if tracing then trace('post: '..vars) end
             end
             -- resolve requested file from user agent request
             file = request:match('(/%S*)')

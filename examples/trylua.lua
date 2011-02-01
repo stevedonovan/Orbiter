@@ -2,6 +2,7 @@
 -- This is an off-line local server version of James Turner's http://trylua.org
 local orbiter = require 'orbiter'
 local html = require 'orbiter.html'
+require 'orbiter.libs.jquery'
 
 local lua = orbiter.new(html)
 
@@ -70,8 +71,8 @@ end
 
 local env = {
     print = term_print,
-    __index = _G
 }
+setmetatable(env,{ __index = _G })
 
 function eval(code)
     local status,val,f,err,rcnt
@@ -98,10 +99,7 @@ local span,div = html.tags 'span,div'
 function lua:index(web)
     return html {
         title = 'Try Lua Offline',
-        scripts = {
-            'http://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js',
-            '/resources/javascript/jquery.console.js'
-        },
+        scripts = '/resources/javascript/jquery.console.js',
         inline_style = style,
         inline_script = script,
         div{id='console',''},
