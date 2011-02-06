@@ -1,7 +1,7 @@
 --- Orbiter, a compact personal web application framework.
 -- Very much inspired by Orbit, with a little webserver borrowed from Webrocks
 
-local socket = require 'socket'
+local socket = require 'socket.core'
 
 local _M = {}  --- our module
 local DIRSEP = package.config:sub(1,1)
@@ -376,12 +376,39 @@ function trace(stuff)
     io.stderr:write(stuff,'\n')
 end
 
+local num_retries = 100
+
+-- this is based on socket.bind from LuaSocket.
+-- However, we _do_ want to know if the port is already in use,
+-- because we want to try again with a higher port number.
+local function socket_bind(host,port,backlog)
+    local sock, err, res
+    for i = 1,num_retries do
+        sock, err = socket.tcp()
+        if not sock then return nil, err end
+        sock:setoption("reuseaddr", true)
+        res, err = sock:bind(host, port)
+        if not res then
+            if err == 'address already in use' then
+                port = port + 1
+            else
+                return nil,err
+            end
+        else
+            break
+        end
+    end
+    res, err = sock:listen(backlog)
+    if not res then return nil, err end
+    return sock,port
+end
+
 function MT:run(...)
     local args,flags
     flags,args = _M.parse_flags(...)
     local addr = flags['addr'] or 'localhost'
     local port = flags['port'] or '8080'
-    local URL = 'http://'..addr..':'..port
+    
     local fake = flags['test']
     local testing = flags['no_headers'] and fake
     last_obj = self
@@ -397,17 +424,20 @@ function MT:run(...)
         os.exit()
     end
 
-    if fake then addr = fake==true and '/' or fake
-    else print ("Orbiter serving on "..URL)
-    end
-
-    if  flags['launch'] and not fake then
-        launch_browser(URL,flags['launch'])
+    if fake then 
+        addr = fake==true and '/' or fake
     end
 
     -- create TCP socket on addr:port: allow for a debug hook
-    local server_ctor = fake and require 'orbiter.fake' or socket.bind
-    local server = assert(server_ctor(addr, tonumber(port)))
+    local server_ctor = fake and require 'orbiter.fake' or socket_bind
+    local server, port = assert(server_ctor(addr, tonumber(port)))
+    if not fake then
+        local URL = 'http://'..addr..':'..port
+        print ("Orbiter serving on "..URL)
+        if  flags['launch'] then
+            launch_browser(URL,flags['launch'])
+        end        
+    end
     -- loop while waiting for a user agent request
     while 1 do
         -- wait for a connection, set timeout and receive request from user agent
