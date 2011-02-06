@@ -65,6 +65,14 @@ function template.substitute(str,env)
     return table.concat(out)
 end
 
+function template.page(file,env)
+    local f,err = io.open(file)
+    if not f then return nil, err end
+    local tmpl = f:read '*a'
+    f:close()
+    return template.substitute(tmpl,env)
+end
+
 return template
 
 
