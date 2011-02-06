@@ -11,25 +11,31 @@ bridge.dispatch_static('/resources/javascript/calendar.+',
  '/resources/images/calendar.+')
 
 local _M = {}
+_M.mode = 'us'
 
 html.set_defaults {
-    scripts = '/resources/javascript/calendar_eu.js',
+    scripts = '/resources/javascript/calendar.js',
     styles = '/resources/css/calendar.css'
 }
 
-function _M.calendar(form,control)
+function _M.set_mode(mode)
+    _M.mode = mode
+end
+
+function _M.calendar(form,control,mode)
     return html.script ( [[
  	new tcal ({
-		'formname': '%s',
-		'controlname': '%s'
+		formname: '%s',
+		controlname: '%s',
+        mode: '%s'
 	});   
-    ]] % {form,control} )
+    ]] % {form,control,mode} )
 end
 
 local input = html.tags 'input'
 
 function _M.date(form,control)
-    return input{type='text',name=control},_M.calendar(form,control)
+    return input{type='text',name=control},_M.calendar(form,control,_M.mode)
 end
 
 return _M

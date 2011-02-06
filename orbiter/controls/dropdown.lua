@@ -134,7 +134,7 @@ function _M.menu(items)
         j = j + 1
     end
     ls.id = 'sddm'
-    return html.list(ls)
+    return {html.list(ls),div {style='clear:both',''}}
 end
 
 return _M  -- orbiter.widgets.dropdown
