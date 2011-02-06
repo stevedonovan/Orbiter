@@ -1,11 +1,10 @@
 require 'orbit'
 local html = require 'orbiter.html'
-local bridge = require 'orbiter.bridge'
 
-module("dropdown_test", package.seeall, orbit.new, bridge.new)
+module("dropdown_test", package.seeall, orbit.new, html.new)
 
-local dropdown = require 'orbiter.widgets.dropdown'
-local calendar = require 'orbiter.widgets.calendar'
+local dropdown = require 'orbiter.controls.dropdown'
+local calendar = require 'orbiter.controls.calendar'
 
 local h2,form,hr,div,p = html.tags 'h2,form,hr,div,p'
 
@@ -22,7 +21,7 @@ function index()
                 'sight','#'
             }
         },
-        div {style='clear:both',''},
+        p(),
         form { name = 'form1',
             'A date entry field', calendar.date('form1','text1')    
         }

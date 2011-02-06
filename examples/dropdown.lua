@@ -1,7 +1,10 @@
 local orbiter = require 'orbiter'
 local html = require 'orbiter.html'
-local dropdown = require 'orbiter.widgets.dropdown'
-local calendar = require 'orbiter.widgets.calendar'
+local dropdown = require 'orbiter.controls.dropdown'
+local calendar = require 'orbiter.controls.calendar'
+
+-- 'us' mm/dd/yyyy, 'eu' 'dd-mm-yyyy' or 'db' 'yyyy-mm-dd'
+calendar.set_mode 'eu'
 
 local self = orbiter.new(html)
 
@@ -20,11 +23,12 @@ function self:index()
             'sight','#'
         }
     },
-    div {style='clear:both',''},
+    p(),
     form { name = 'form1',
         'A date entry field', calendar.date('form1','text1')    
     },
-    p(html.link('http://javascript-array.com/','Drop-down menu by javascript-array.com')),
+    p{"Drop-down menu by",html.link('http://javascript-array.com/')},
+    p{"Calendar control by",html.link("http://www.softcomplex.com/products/tigra_calendar/")},
 }
 end
 
