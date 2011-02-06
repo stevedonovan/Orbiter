@@ -24,10 +24,12 @@ function _M.dispatch_static(...)
             return app:serve_static(web,fpath)
         end
         app:dispatch_get(static_handler,...)
+        return app
     else
         obj = require 'orbiter'. new()
         obj.root = path
         obj:dispatch_static(...)
+        return obj
     end
 end
 
