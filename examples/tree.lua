@@ -158,10 +158,9 @@ function app:index(web)
                         hidden = true,
                         'fred','Pebbles','Wilma',
                         }
-                    },
-                    link('http://snippets.luacode.org','so fine')
-                }
-            }
+                },
+                link('http://snippets.luacode.org','so fine')
+             }
         },
         jq.button('Add',add_tree{id="browser",
                     "more",
