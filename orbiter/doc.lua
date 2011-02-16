@@ -48,9 +48,17 @@ Doc.__index = Doc;
 -- @param attr optional attributes (table of name-value pairs)
 function _M.new(tag, attr, no_last_add)
     local last_add = not no_last_add and {} or nil
-    local doc = { tag = tag, attr = attr or {}, last_add = last_add};
+    local doc = { tag = tag, attr = attr, last_add = last_add};
     return setmetatable(doc, Doc);
 end
+
+local function empty(attr)
+    return not attr or not next(attr)
+end
+
+local function is_text(s) return type(s) == 'string' end
+local function is_element(d) return type(d) == 'table' and d.tag ~= nil end
+
 
 --- parse an XML document.  By default, this uses lxp.lom.parse, but
 -- falls back to basic_parse, or if use_basic is true
@@ -133,7 +141,7 @@ end
 -- @param t a table containing attribute/value pairs
 function Doc:set_attribs (t)
     for k,v in pairs(t) do
-        self.attr[k] = v
+        self.set_attrib(k,v)
     end
 end
 
@@ -141,6 +149,7 @@ end
 -- @param a attribute
 -- @param v its value
 function Doc:set_attrib(a,v)
+    if not self.attr then self.attr = {} end
     self.attr[a] = v
 end
 
@@ -162,6 +171,7 @@ function _M.elem(tag,items)
     elseif type(items) == 'table' then
        for k,v in pairs(items) do
            if type(k) == 'string' then
+               if not s.attr then s.attr = {} end
                s.attr[k] = v
                append(s.attr,k)
            elseif type(v) == 'table' and not _M.is_tag(v) then
@@ -183,7 +193,7 @@ end
 function _M.tags(list)
     local ctors = {}
     local elem = _M.elem
-    if type(list) == 'string' then list = split(list,',') end
+    if type(list) == 'string' then list = split(list,',%s') end
     for _,tag in ipairs(list) do
         local ctor = function(items) return _M.elem(tag,items) end
         t_insert(ctors,ctor)
@@ -286,7 +296,7 @@ function Doc:first_childtag()
 end
 
 function Doc:matching_tags(tag, xmlns)
-    xmlns = xmlns or self.attr.xmlns;
+    xmlns = xmlns or self.attr and self.attr.xmlns;
     local tags = self;
     local start_i, max_i = 1, #tags;
     return function ()
@@ -331,7 +341,7 @@ function Doc:maptags(callback)
             end
         end
     end
-    return self;
+    return self
 end
 
 local xml_escape
@@ -352,21 +362,41 @@ end
 -- pretty printing
 -- if indent, then put each new tag on its own line
 -- if attr_indent, put each new attribute on its own line
-local function _dostring(t, buf, self, xml_escape, parentns, idn, indent, attr_indent)
+local yield = coroutine.yield
+
+local function add(buf,s)
+    if not buf.sz then
+        buf[#buf+1] = s 
+    else
+        local data = buf.data
+        data[#data+1] = s
+        buf.sz = buf.sz + #s            
+        if buf.sz > buf.maxbuf then
+            yield(t_concat(data))
+            buf.data = {}
+            buf.sz = 0
+        end
+    end
+end
+
+local _dostring
+function _dostring(t, buf, parentns, idn, indent, attr_indent)
     local nsid = 0;
     local tag = t.tag
     local lf,alf = ""," "
     if indent then lf = '\n'..idn end
     if attr_indent then alf = '\n'..idn..attr_indent end
-    t_insert(buf, lf.."<"..tag);
-    for k, v in pairs(t.attr) do
-        if type(k) ~= 'number' then -- LOM attr table has list-like part
-            if s_find(k, "\1", 1, true) then
-                local ns, attrk = s_match(k, "^([^\1]*)\1?(.*)$");
-                nsid = nsid + 1;
-                t_insert(buf, " xmlns:ns"..nsid.."='"..xml_escape(ns).."' ".."ns"..nsid..":"..attrk.."='"..xml_escape(v).."'");
-            elseif not(k == "xmlns" and v == parentns) then
-                t_insert(buf, alf..k.."='"..xml_escape(v).."'"); 
+    add(buf,lf.."<"..tag);
+    if not empty(t.attr) then
+        for k, v in pairs(t.attr) do
+            if type(k) ~= 'number' then -- LOM attr table has list-like part
+                if s_find(k, "\1", 1, true) then
+                    local ns, attrk = s_match(k, "^([^\1]*)\1?(.*)$");
+                    nsid = nsid + 1;
+                    add(buf," xmlns:ns"..nsid.."='"..xml_escape(ns).."' ".."ns"..nsid..":"..attrk.."='"..xml_escape(v).."'");
+                elseif not(k == "xmlns" and v == parentns) then
+                    add(buf,alf..k.."='"..xml_escape(v).."'"); 
+                end
             end
         end
     end
@@ -374,13 +404,13 @@ local function _dostring(t, buf, self, xml_escape, parentns, idn, indent, attr_i
     if len == 0 then
     local out = "/>"
     if attr_indent then out = '\n'..idn..out end
-        t_insert(buf, out);
+        add(buf,out);
     else
-        t_insert(buf, ">");
+        add(buf,">");
         for n=1,len do
             local child = t[n];
             if child.tag then
-                self(child, buf, self, xml_escape, t.attr.xmlns,idn and idn..indent, indent, attr_indent );
+                _dostring(child, buf, t.attr and t.attr.xmlns, idn and idn..indent, indent, attr_indent);
                 has_children = true
             elseif type(child) == 'string' then -- text element
                 if not child:find '^\001' then
@@ -388,10 +418,14 @@ local function _dostring(t, buf, self, xml_escape, parentns, idn, indent, attr_i
                 else
                     child = child:sub(2)
                 end
-                t_insert(buf, child);
+                add(buf,child);
             end
         end
-        t_insert(buf, (has_children and lf or '').."</"..tag..">");
+        add(buf,(has_children and lf or '').."</"..tag..">");
+    end
+    if maxbuf then
+        --yield(t_concat(buf))
+        --return buf
     end
 end
 
@@ -400,10 +434,17 @@ end
 --- @param indent an indent for each level
 --- @param attr_indent if given, indent each attribute pair and put on a separate line
 --- @return a string representation
-function _M.tostring(t,idn,indent, attr_indent)
-    local buf = {};
-    _dostring(t, buf, _dostring, xml_escape, nil,idn,indent, attr_indent);
-    return t_concat(buf);
+function _M.tostring(t,idn,indent, attr_indent, maxbuf)    
+    if maxbuf then
+        local buf = {sz = 0, data = {}, maxbuf = maxbuf}
+        return coroutine.wrap(function()
+            return _dostring(t, buf, nil,idn,indent, attr_indent)
+        end)
+    else
+        local buf = { }
+        _dostring(t, buf, nil,idn,indent, attr_indent)    
+        return t_concat(buf);
+    end
 end
 
 Doc.__tostring = function(d)
@@ -457,11 +498,13 @@ function _M.compare(t1,t2)
     if t1.tag ~= t2.tag then return false, 'tag  '..t1.tag..' ~= tag '..t2.tag end
     if #t1 ~= #t2 then return false, 'size '..#t1..' ~= size '..#t2..' for tag '..t1.tag end
     -- compare attributes
-    for k,v in pairs(t1.attr) do
-        if t2.attr[k] ~= v then return false, 'mismatch attrib' end
-    end
-    for k,v in pairs(t2.attr) do
-        if t1.attr[k] ~= v then return false, 'mismatch attrib' end
+    if t1.attr and t2.attr then
+        for k,v in pairs(t1.attr) do
+            if t2.attr[k] ~= v then return false, 'mismatch attrib' end
+        end
+        for k,v in pairs(t2.attr) do
+            if t1.attr[k] ~= v then return false, 'mismatch attrib' end
+        end
     end
     -- compare children
     for i = 1,#t1 do
@@ -498,7 +541,7 @@ local function parseargs(s)
   s:gsub("([%w:]+)%s*=%s*([\"'])(.-)%2", function (w, _, a)
     arg[w] = unescape(a)
   end)
-  return arg
+  return next(arg) and arg or nil
 end
 
 --- Parse a simple XML document using a pure Lua parser based on Robero Ierusalimschy's original version.
@@ -551,12 +594,6 @@ function _M.basic_parse(s,all_text)
   return type(res[1])=='string' and res[2] or res[1]
 end
 
-function empty(attr)
-    return not attr or not next(attr)
-end
-
-function is_text(s) return type(s) == 'string' end
-function is_element(d) return type(d) == 'table' and d.tag ~= nil end
 
 -- returns the key,value pair from a table if it has exactly one entry
 function has_one_element(t)
