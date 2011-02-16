@@ -66,6 +66,7 @@ end
 
 local MT = {}
 MT.__index = MT
+local bufsize
 
 function _M.new(...)
     local extensions = {...}
@@ -81,6 +82,7 @@ function _M.new(...)
     else
         obj = setmetatable({},MT)
     end    
+    obj.bufsize = bufsize
     -- remember to strip off the starting @
     local path = debug.getinfo(2, "S").source:sub(2):gsub('\\','/')
     if path:find '/' then
@@ -148,7 +150,6 @@ end
 ----- URL pattern dispatch --------------
 
 local dispatch_set_handler
-local bufsize
 
 local function static_handler(obj,web)
     local content,mime = obj:read_content(web.path_info,bufsize)
@@ -534,7 +535,7 @@ function MT:run(...)
                         if not no_headers then
                             local len = is_str and #content or -1
                             send_headers(client,OK,mime or 'text/html',len,web.headers)
-                        end
+                        end                        
                         if is_str then
                             client:send(content)
                         else
@@ -544,7 +545,7 @@ function MT:run(...)
                                 client:send(c)  
                                 client:send '\r\n'
                             end
-                            client:send '0\r\n\r\n'
+                            client:send '0\r\n\r\n'                            
                         end
                     else
                         send_error(client,content)
