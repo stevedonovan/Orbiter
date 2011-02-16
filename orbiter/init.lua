@@ -47,12 +47,21 @@ function _M.parse_flags(...)
    return flags, unpack(args)
 end
 
-local function readfile (f)
+local function readfile (f, bufsize)
 	local f,err = io.open(f, 'rb')
 	if not f then return nil,err end
-	local s = f:read '*a'
-	f:close()
-	return s
+    local s
+    if not bufsize then
+        local s = f:read '*a'    
+        f:close()
+        return s
+    else
+        return function()
+            local s = f:read(bufsize)
+            if not s then f:close() end
+            return s
+        end
+    end
 end
 
 local MT = {}
@@ -139,9 +148,10 @@ end
 ----- URL pattern dispatch --------------
 
 local dispatch_set_handler
+local bufsize
 
 local function static_handler(obj,web)
-    local content,mime = obj:read_content(web.path_info)
+    local content,mime = obj:read_content(web.path_info,bufsize)
     if not content then
         return '404 Not Found',false
     else
@@ -306,8 +316,25 @@ local function send_error (client, code, message)
 	client:send(msg)
 end
 
-local function send_headers (client,code, type, length)
-	client:send( ("HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n"):format(code, type, length) )
+local function send_headers (client,code, type, length, headers)
+    local add = table.insert
+    local out = {"HTTP/1.1 "..code}
+    if not headers then
+        add(out,"Content-Type: "..type)
+    else
+        for head,value in pairs(headers) do
+            add(out,head..": "..value)
+        end
+    end
+    if length > -1 then
+        add(out,"Content-Length: "..length)
+        add(out,"Connection: close")
+    else
+        add(out,"Transfer-Encoding: chunked")
+    end    
+    add(out,"")
+    add(out,"")
+	client:send( table.concat(out,"\r\n"))
 end
 
 -- process headers from a connection (borrowed from socket.http)
@@ -345,11 +372,11 @@ function MT:get_path_to(file)
     return self.root .. file
 end
 
-function MT:read_content(file)
+function MT:read_content(file,bufsize)
     if file == '/' then file = '/index.html' end
     local extension = file:match('%.(%a+)$') or 'other'
     local path = self:get_path_to(file)
-    local content = readfile (path)
+    local content = readfile (path,bufsize)
     if content then
         if tracing then trace('returning '..path) end
         local mime = mime_types[extension] or 'text/plain'
@@ -403,18 +430,30 @@ local function socket_bind(host,port,backlog)
     return sock,port
 end
 
+local args_ = arg
+
 function MT:run(...)
     local args,flags
     flags,args = _M.parse_flags(...)
     local addr = flags['addr'] or 'localhost'
     local port = flags['port'] or '8080'
+    -- useful to keep this information where it can be found...
+    flags['addr'] = addr
+    flags['port'] = port
+    flags['lua'] = args_[-1]
+    flags['master'] = self
+    _M.flags = flags
     
     local fake = flags['test']
-    local testing = flags['no_headers'] and fake
+    local no_headers = flags['no_headers'] and fake
     last_obj = self
 
     if running then return
     else running = true
+    end
+    
+    if flags['bufsize'] then
+        bufsize = tonumber(flags['bufsize'])
     end
 
     tracing = flags['trace']
@@ -491,10 +530,22 @@ function MT:run(...)
                         if self.content_filter then
                             content,mime = self:content_filter(content,mime)
                          end
-                        if not testing then
-                            send_headers(client,OK,mime or 'text/html',#content)
+                        local is_str = type(content) == 'string'
+                        if not no_headers then
+                            local len = is_str and #content or -1
+                            send_headers(client,OK,mime or 'text/html',len,web.headers)
                         end
-                        client:send(content)
+                        if is_str then
+                            client:send(content)
+                        else
+                            for c in content do  -- content is an iterator
+                                -- and it's transfer-encoding 'chunked'
+                                client:send(('%X\r\n'):format(#c))
+                                client:send(c)  
+                                client:send '\r\n'
+                            end
+                            client:send '0\r\n\r\n'
+                        end
                     else
                         send_error(client,content)
                     end
