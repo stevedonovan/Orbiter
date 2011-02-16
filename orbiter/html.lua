@@ -17,8 +17,8 @@ _M.is_doc = doc.is_tag
 _M.is_elem = doc.is_tag
 _M.elem = doc.elem
 
-function _M.tostring(d)
-    return doc.tostring(d,'','  ')
+function _M.tostring(d,bufsize)
+    return doc.tostring(d,'','  ',nil,bufsize)
 end
 
 _M.raw_tostring = doc.tostring
@@ -106,10 +106,10 @@ setmetatable(_M,{
 -- Will adjust MIME type for XHTML
 function _M.content_filter(self,content,mime)
     if _M.is_doc(content) then
-        if content.attr.xmlns and not mime then
+        if content.attr and content.attr.xmlns and not mime then
             mime = "application/xhtml+xml"
         end
-        return _M.tostring(content), mime
+        return _M.tostring(content,self.bufsize), mime
     end
     return content,mime
 end
