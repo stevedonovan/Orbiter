@@ -22,6 +22,7 @@ function _M.tostring(d)
 end
 
 _M.raw_tostring = doc.tostring
+_M.escape = doc.xml_escape
 
 function _M.literal(s)
     return '\001'..s
@@ -82,6 +83,9 @@ function _M.document(t)
     make_head(head,t,'scripts','script','text/javascript','src')
     make_head(head,t,'inline_style','style','text/css')
     make_head(head,t,'inline_script','script','text/javascript')
+    if t.refresh then
+        append(head,doc.elem('meta',{['http-equiv']='refresh',content=t.refresh}))
+    end
     local data = t.body or t
     local xmlns
     if t.xml then xmlns = "http://www.w3.org/1999/xhtml" end
@@ -95,7 +99,9 @@ function _M.as_text(t)
 end
 
 --- the module is directly callable.
--- e.g. html { title = 'hello'; .... }
+-- and is short for @{document}.
+-- @usage html { title = 'hello'; .... }
+-- @function html
 setmetatable(_M,{
     __call = function(o,t)
         return _M.document(t)
@@ -197,8 +203,8 @@ local function table_arg(t)
     local data = t.data or t
     if t.map then
         data = t.map(data)
-    end    
---    assert (#data > 0) 
+    end
+--    assert (#data > 0)
     return data
 end
 
@@ -262,6 +268,7 @@ function _M.table(t)
     end
     res.border = t.border --???
     copy_common(t,res)
+    res.width = t.width
     local res = _table(res)
     if t.styles then set_table_style(res,data,t.styles) end
     return res

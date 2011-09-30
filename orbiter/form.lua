@@ -23,7 +23,7 @@ html.set_defaults {
 
 function form.range(x1,x2)
     return function(x)
-        if x < x1 or x > x2 then return false,'must be between %f and %f' % {x1,x2} 
+        if x < x1 or x > x2 then return false,'must be between %f and %f' % {x1,x2}
         else return x end
     end
 end
@@ -34,11 +34,11 @@ function form.match(pat,err)
     end
 end
 
-form.non_blank = form.match('^%S+$', 'may not be blank')
+form.non_blank = form.match('%S', 'may not be blank')
 
 function form.irange(n1,n2)
     return function(x)
-        if x < n1 or x > n2 then return false,'must be between %d and %d' % {n1,n2} 
+        if x < n1 or x > n2 then return false,'must be between %d and %d' % {n1,n2}
         elseif math.floor(x) ~= x then return false,'must be an integer'
         else return x
         end
@@ -125,6 +125,7 @@ local function generate_control(obj,var,constraint)
     local vtype = type(value)
     local cntrl
     local converter = converters.string
+    --print(var,constraint,value,vtype)
     if util.class_of(constraint,Constraint) then
         print('value',value)
         cntrl = constraint:control(var,value)
@@ -155,7 +156,7 @@ local function generate_control(obj,var,constraint)
     return cntrl,converter,constraint
 end
 
-function form.new (t)    
+function form.new (t)
     local f = { spec_of = {}, spec_table = t }
     f.validate = form.validate
     f.show = form.show
@@ -185,14 +186,14 @@ function form.create (self,web)
         local cntrl,converter,constraint = generate_control(obj,var,constraint)
         cntrl:set_attrib('id',id)
         label = label_{['for']=id,title=label,label}
-        local spec = {label=label,cntrl=cntrl,converter=converter,constraint=constraint} 
+        local spec = {label=label,cntrl=cntrl,converter=converter,constraint=constraint}
         append(res,spec)
         self.spec_of[var] = spec
     end
     self.spec_list = res
     local contents
     local ftype = spec.type or 'cols'
-    if ftype == 'cols' or ftype == 'rows' then -- wrap up as a table        
+    if ftype == 'cols' or ftype == 'rows' then -- wrap up as a table
         local tbl = {}
         for i,item in ipairs(res) do
             tbl[i] = {item.label,item.cntrl}
@@ -211,7 +212,7 @@ function form.create (self,web)
         contents = fieldset_{legend_(spec.title),contents}
     end
     self.body = form_{
-        name = spec.name; action = spec.action, class = 'orbiter';        
+        name = spec.name; id = spec.name; action = spec.action, class = 'orbiter';
         method = spec.method or 'post';
         contents,
     }
@@ -237,7 +238,7 @@ function form.show(self)
 end
 
 function form.validate (self,values)
-    local ok = true    
+    local ok = true
     local res = {}
     self.button = values[button_name]
     for var,value in pairs(values) do

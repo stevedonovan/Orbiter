@@ -62,16 +62,16 @@ function _M.new(...)
     local extensions = {...}
     local obj
     -- if passed a table which doesn't have register, then assume we're being called
-    --    from module() 
+    --    from module()
     -- use the module as the object, and manually add our methods to it.
-    if extensions[1] and not extensions[1]. register then 
+    if extensions[1] and not extensions[1]. register then
         obj = extensions[1]
         local m = extensions[1]
         for k,v in pairs(MT) do m[k] = v end
         table.remove(extensions,1)
     else
         obj = setmetatable({},MT)
-    end    
+    end
     -- remember to strip off the starting @
     local path = debug.getinfo(2, "S").source:sub(2):gsub('\\','/')
     if path:find '/' then
@@ -116,7 +116,7 @@ local function which(prog)
 end
 
 function launch_browser (url,browser)
-    if browser == true then 
+    if browser == true then
         browser = nil -- autodetect!
     end
     if Windows then
@@ -311,7 +311,7 @@ local function send_headers (client,code, type, length)
 end
 
 -- process headers from a connection (borrowed from socket.http)
--- note that the variables have '-' replaced as '_' to make them WSAPI compatible 
+-- note that the variables have '-' replaced as '_' to make them WSAPI compatible
 -- (e.g. HTTP_CONTENT_LENGTH)
 local function receiveheaders(sock)
     local line, name, value, err
@@ -408,7 +408,7 @@ function MT:run(...)
     flags,args = _M.parse_flags(...)
     local addr = flags['addr'] or 'localhost'
     local port = flags['port'] or '8080'
-    
+
     local fake = flags['test']
     local testing = flags['no_headers'] and fake
     last_obj = self
@@ -424,7 +424,7 @@ function MT:run(...)
         os.exit()
     end
 
-    if fake then 
+    if fake then
         addr = fake==true and '/' or fake
     end
 
@@ -436,7 +436,7 @@ function MT:run(...)
         print ("Orbiter serving on "..URL)
         if  flags['launch'] then
             launch_browser(URL,flags['launch'])
-        end        
+        end
     end
     -- loop while waiting for a user agent request
     while 1 do
@@ -450,11 +450,13 @@ function MT:run(...)
             local method = request:match '^([A-Z]+)'
             if not fake then
                 headers,err = receiveheaders(client)
+                --for k,v in pairs(headers) do print(k,v) end
+                headers.HTTP_REMOTE = client:getpeername()
             end
             if err then quit('header error: '..err)  end
             if method == 'POST' then
                 local size = tonumber(headers.HTTP_CONTENT_LENGTH)
-                vars = client:receive(size)               
+                vars = client:receive(size)
                 if tracing then trace('post: '..vars) end
             end
             -- resolve requested file from user agent request
@@ -481,7 +483,7 @@ function MT:run(...)
                         status = false
                     end
                 else
-                    print('exception: '..tostring(content))                
+                    print('exception: '..tostring(content))
                 end
                 if content then -- can naturally be nil for POST requests!
                     if status then

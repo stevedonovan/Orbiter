@@ -11,10 +11,10 @@ html.set_defaults {
    scripts = jquery_js,
    inline_script = [[
     function jq_call_server(id,klass,tid) {
-        $.get('/jq/request',{id: id, group_id: tid, klass: klass });    
+        $.get('/jq/request',{id: id, group_id: tid, klass: klass });
     }
 
-    function jq_file_click(klass,id,tid,event) {        
+    function jq_file_click(klass,id,tid,event) {
         var href = $('#'+id).attr('title');
         if (href == "") {
             href = $('#'+id+' span').attr('title');
@@ -25,13 +25,16 @@ html.set_defaults {
             jq_call_server(id,klass,tid)
         }
         event.stopImmediatePropagation();
-        return false;  
-    }    
+        return false;
+    }
+
     function jq_set_click(select,container_id) {
         $(select).click(function(event) {
             var klass = $(this).attr('class')
             return jq_file_click(klass,this.id,container_id,event);
-        })    
+        })
+    }
+    function jq_do_click(container_id) {
     }
 ]]
 }
@@ -65,7 +68,7 @@ local function call_if(fun,arg,id)
         return tostring(resp),mtype
     else
         return ''
-    end    
+    end
 end
 
 function _M.call_handler(idata,tdata,id,name)
@@ -73,16 +76,20 @@ function _M.call_handler(idata,tdata,id,name)
 end
 
 -- callback magic: if an item is clicked, then the JS function jq_file_click
--- will make an async request which is handled here. 
+-- will make an async request which is handled here.
 -- An application may add to this functionality....
 -- (By default, callbacks are assumed to return JavaScript; set another mime type
 -- explicitly if this is inappropriate.)
 function app:jq_request(web)
     local vars = web.input
-    --print('request wuz ',vars.id, vars.group_id,vars.klass)
+    print('request wuz ',vars.id, vars.group_id,vars.klass)
     local klass = vars.klass or 'nada'
-    local idata = lua_data_map[vars.id] or 'nada'    
+    local idata = lua_data_map[vars.id] or 'nada'
     local tdata = lua_data_map[vars.group_id] or 'nada'
+    if idata == 'nada' and tdata == 'nada' then
+        print('gotcha',vars.klass,vars.id,vars.group_id)
+        return ''
+    end
     local resp,mtype
     if tdata.click_handler then
         local resp,mtype = tdata.click_handler(klass,idata,tdata,vars.id)
@@ -111,12 +118,10 @@ local button_  = html.tags 'button'
 function _M.button(label,callback)
     return {
         button_{class='click-button',
-            id = data_to_id {
-                click = callback
-            },
+            id = data_to_id {click = callback},
             label},
         html.script('jq_set_click("button.click-button","buttons")')
-    }    
+    }
 end
 
 function _M.link(label,callback)
@@ -129,7 +134,7 @@ function _M.link(label,callback)
 end
 
 function _M.reload()
-    return "window.location.reload()"
+    return "window.location.href=window.location.href"
 end
 
 local JMT = {}
@@ -148,7 +153,7 @@ function js_tostring(args)
     local concat = table.concat
     for i,a in ipairs(args) do
         local ta = type(a)
-        if html.is_doc(a) then 
+        if html.is_doc(a) then
             -- don't want pretty-printing here!
             a = html.raw_tostring(a)
             ta = 'string'
