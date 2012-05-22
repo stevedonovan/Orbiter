@@ -145,7 +145,9 @@ local function static_handler(obj,web)
     if not content then
         return '404 Not Found',false
     else
-        return content,mime
+        return content,mime,{
+            ["Cache-Control"] = "max-age=86400"
+        }
     end
 end
 
@@ -306,8 +308,16 @@ local function send_error (client, code, message)
 	client:send(msg)
 end
 
-local function send_headers (client,code, type, length)
-	client:send( ("HTTP/1.1 %s\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n"):format(code, type, length) )
+local function send_headers (client,code, type, length, sheaders)
+    local extra = ''
+    if sheaders then
+        local res, append = {}, table.insert
+        for head, value in pairs(sheaders) do
+            append(res,head..": "..value..'\r\n')
+        end
+        extra = table.concat(res)
+    end
+	client:send( ("HTTP/1.1 %s\r\n%sContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n"):format(code, extra, type, length) )
 end
 
 -- process headers from a connection (borrowed from socket.http)
@@ -445,67 +455,71 @@ function MT:run(...)
         client:settimeout(60)
         local request, err = client:receive()
         if not err then
-            local content,file,action,captures,obj,web,vars,headers,err
+            local content,file,action,captures,obj,web,vars,headers,err,sheaders
             if tracing then trace('request: '..request) end
             local method = request:match '^([A-Z]+)'
             if not fake then
                 headers,err = receiveheaders(client)
-                --for k,v in pairs(headers) do print(k,v) end
-                headers.HTTP_REMOTE = client:getpeername()
             end
-            if err then quit('header error: '..err)  end
-            if method == 'POST' then
-                local size = tonumber(headers.HTTP_CONTENT_LENGTH)
-                vars = client:receive(size)
-                if tracing then trace('post: '..vars) end
-            end
-            -- resolve requested file from user agent request
-            file = request:match('(/%S*)')
-            if method == 'GET' then
-                url,vars = file:match('([^%?]+)%?(.+)')
-                if url then file = url end
-            end
-            vars = vars and url_split(vars) or {}
-            web = {vars = headers, input = vars,
-                        method = method:lower(), path_info = file}
-            web[method=='GET' and 'GET' or 'POST'] = vars
-            file,obj = process_request_filters(web,file)
-            action,captures,obj = match_patterns(method,file,obj)
-            if action then
-                -- @doc handlers may specify the MIME type of what they
-                -- return, if they choose; default is HTML.
-                status,content,mime = pcall(action,obj,web,unpack(captures))
-                if status then
-                    if not content and method ~= 'POST' then
-                        status = false
-                        content = '404 Request Failed'
-                    elseif mime == false then
-                        status = false
-                    end
-                else
-                    print('exception: '..tostring(content))
+            if not err then
+                if headers then
+                    headers.HTTP_REMOTE = client:getpeername()
                 end
-                if content then -- can naturally be nil for POST requests!
+                if method == 'POST' then
+                    local size = tonumber(headers.HTTP_CONTENT_LENGTH)
+                    vars = client:receive(size)
+                    if tracing then trace('post: '..vars) end
+                end
+                -- resolve requested file from user agent request
+                file = request:match('(/%S*)')
+                if method == 'GET' then
+                    url,vars = file:match('([^%?]+)%?(.+)')
+                    if url then file = url end
+                end
+                vars = vars and url_split(vars) or {}
+                web = {vars = headers, input = vars,
+                            method = method:lower(), path_info = file}
+                web[method=='GET' and 'GET' or 'POST'] = vars
+                file,obj = process_request_filters(web,file)
+                action,captures,obj = match_patterns(method,file,obj)
+                if action then
+                    -- @doc handlers may specify the MIME type of what they
+                    -- return, if they choose; default is HTML.
+                    status,content,mime,sheaders = pcall(action,obj,web,unpack(captures))
                     if status then
-                        -- @doc if the app or extension object defines a content_filter method,
-                        -- it will receive the content and mime type, and is expected to
-                        -- return the same.
-                        if self.content_filter then
-                            content,mime = self:content_filter(content,mime)
-                         end
-                        if not testing then
-                            send_headers(client,OK,mime or 'text/html',#content)
+                        if not content and method ~= 'POST' then
+                            status = false
+                            content = '404 Request Failed'
+                        elseif mime == false then
+                            status = false
                         end
-                        client:send(content)
                     else
-                        send_error(client,content)
+                        print('exception: '..tostring(content))
                     end
+                    if content then -- can naturally be nil for POST requests!
+                        if status then
+                            -- @doc if the app or extension object defines a content_filter method,
+                            -- it will receive the content and mime type, and is expected to
+                            -- return the same.
+                            if self.content_filter then
+                                content,mime = self:content_filter(content,mime)
+                             end
+                            if not testing then
+                                send_headers(client,OK,mime or 'text/html',#content,sheaders)
+                            end
+                            client:send(content)
+                        else
+                            send_error(client,content)
+                        end
+                    end
+                else -- unmatched pattern!!
+                    send_error (client,'404 Not Found')
                 end
-            else -- unmatched pattern!!
-                send_error (client,'404 Not Found')
+            else
+                print ('header parsing failed:',err)
             end
         else
-            print 'que? client receive failed'
+            print ('client receive failed',err)
         end
         -- done with client, close request
         client:close()
