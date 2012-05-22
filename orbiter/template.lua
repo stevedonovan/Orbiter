@@ -1,8 +1,12 @@
 -- Orbiter, a personal web application framework
--- Lua template preprocessor 
+-- Lua template preprocessor
 -- Originally by Ricki Lake,
 --
+
 local append,format = table.insert,string.format
+
+local parse1,parse2 = "()","(%b())()"
+local parse_dollar
 
 if not loadin then -- Lua 5.2 compatibility
     function loadin(env,str,name)
@@ -14,7 +18,7 @@ end
 
 local function parseDollarParen(pieces, chunk, s, e)
   local s = 1
-  for term, executed, e in chunk:gmatch ("()$(%b())()") do
+  for term, executed, e in chunk:gmatch (parse_dollar) do
       append(pieces,
         format("%q..(%s or '')..",chunk:sub(s, term - 1), executed))
       s = e
@@ -52,8 +56,8 @@ function template.substitute(str,env)
     if env.__parent then
         setmetatable(env,{__index = env._parent})
     end
-    local code = parseHashLines(str)    
-    --print(code)
+    parse_dollar = parse1..(env.__dollar or '$')..parse2
+    local code = parseHashLines(str)
     local fn,err = loadin(env,code,'TMP')
     if not fn then return nil,err end
     fn = fn()
