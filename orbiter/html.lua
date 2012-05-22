@@ -188,36 +188,52 @@ end
 local function item_op(fun,t)
     if t.render then
         fun = compose(fun,render_function(t.render))
+        t.render = nil
      end
     return fun
 end
 
 local function copy_common(src,dest)
-    dest.id = src.id
-    dest.style = src.style
-    dest.class = src.class
+--~     dest.id = src.id
+--~     dest.style = src.style
+--~     dest.class = src.class
+    for k,v in pairs(src) do
+        if type(k) == 'string' then
+            dest[k] = v
+        end
+    end
 end
 
 local function table_arg(t)
     assert(type(t) == 'table')
-    local data = t.data or t
+    local data = t
+    if t.data then
+        data = t.data
+        t.data = nil
+    end
     if t.map then
         data = t.map(data)
+        t.map = nil
     end
---    assert (#data > 0)
     return data
 end
 
 local ul,ol,li = doc.tags 'ul,ol,li'
 
 --- Generate an HTML list.
--- t must be a single-dimensional array
+-- either t or t.data must be a single-dimensional array. t.start and t.finish
+-- can provide a range over elements to be used. If t.map exists, it's assumed
+-- to be a function that processes the array. Optionally, t.render will convert
+-- values into strings; may be a function or a
 -- The list will be unordered by default, set t.type to 'ordered' or '#'
 function _M.list(t)
     local data = table_arg(t)
     local ctor = (t.type=='ordered' or t.type=='#') and ol or ul
     local each = item_op(li,t)
     local res = imap(each,data,t.start,t.finish)
+    t.type = nil
+    t.start = nil
+    t.finish = nil
     copy_common(t,res)
     return ctor(res)
 end
@@ -250,23 +266,30 @@ end
 local _table,tr,td,th = doc.tags 'table,tr,td,th'
 
 --- Generate an HTML table.
--- Data is either t itself or t.data if it exists, and must be a 2D array.
+-- Data is either t itself or t.data if it exists, and must be a 2D array,
+-- unless if t.cols is specified, where the 1D array will be reshaped as a 2D array.
 -- If t.headers is an array of names, then the table will have a header.
 -- You can specify a range of indices to use in the data using t.start and t.finish
 -- (this is useful if using t.data)
 function _M.table(t)
     local data = table_arg(t)
-    if t.cols then data = reshape2D(data,t.cols) end
+    if t.cols then
+        data = reshape2D(data,t.cols)
+        t.cols = nil
+    end
     local each = item_op(td,t)
     local function row_op(row)
         return tr (imap(each,row))
     end
     local res = imap(row_op,data,t.start,t.finish)
+    t.start = nil
+    t.finish = nil
     if t.headers then
         local hdrs =  tr (imap(th,t.headers))
         table.insert(res,1,hdrs)
+        t.headers = nil
     end
-    res.border = t.border --???
+    --res.border = t.border --??
     copy_common(t,res)
     res.width = t.width
     local res = _table(res)
