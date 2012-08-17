@@ -125,7 +125,7 @@ function launch_browser (url,browser)
     end
     if not browser then
         local os = uname()
-        if line == 'Darwin' then
+        if os == 'Darwin' then
             browser = 'open'
         else
             for _,p in ipairs(browsers) do
