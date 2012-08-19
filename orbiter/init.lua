@@ -112,7 +112,7 @@ local function uname()
 end
 
 local function which(prog)
-    return shell ('which ', prog, ' 2> /dev/null')
+    return shell ('which '..prog..' 2> /dev/null')
 end
 
 function launch_browser (url,browser)
