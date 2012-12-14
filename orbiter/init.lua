@@ -9,7 +9,7 @@ local Windows = DIRSEP == '\\'
 local t_remove, t_insert, append = table.remove, table.insert, table.insert
 local tracing, browser
 local help_text = [[
- **** Orbiter vs 0.2 ****
+ **** Orbiter v0.2 ****
 --addr=IP address (default localhost)
 --port=HTTP port (default 8080)
 --trace   print out some useful verbosity
@@ -124,7 +124,7 @@ function launch_browser (url,browser)
         return
     end
     if not browser then
-        local os = uname()
+        local line = uname()
         if line == 'Darwin' then
             browser = 'open'
         else
@@ -200,7 +200,7 @@ end
 -- So we use the length after stripping out any magic characters.
 -- returns the callback, the pattern captures, and the object (if any)
 local function match_patterns(method,request,obj)
-    local max_pat = 0
+    local max_pat, max_i = 0
     local max_captures
     for i = 1,#patterns do
         local tpat = patterns[i]
@@ -455,7 +455,7 @@ function MT:run(...)
         client:settimeout(60)
         local request, err = client:receive()
         if not err then
-            local content,file,action,captures,obj,web,vars,headers,err,sheaders
+            local content,file,action,captures,obj,web,vars,headers,err,sheaders,url
             if tracing then trace('request: '..request) end
             local method = request:match '^([A-Z]+)'
             if not fake then
@@ -485,7 +485,7 @@ function MT:run(...)
                 if action then
                     -- @doc handlers may specify the MIME type of what they
                     -- return, if they choose; default is HTML.
-                    status,content,mime,sheaders = pcall(action,obj,web,unpack(captures))
+                    local status,content,mime,sheaders = pcall(action,obj,web,unpack(captures))
                     if status then
                         if not content and method ~= 'POST' then
                             status = false
