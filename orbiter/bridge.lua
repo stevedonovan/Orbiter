@@ -18,7 +18,7 @@ function _M.dispatch_static(...)
     else -- invoked just as script name
         path = '.'
     end
-    if orbit then    
+    if orbit then
         local function static_handler(web)
             local fpath = path..web.path_info
             return app:serve_static(web,fpath)
@@ -26,7 +26,7 @@ function _M.dispatch_static(...)
         app:dispatch_get(static_handler,...)
         return app
     else
-        obj = require 'orbiter'. new()
+        local obj = require 'orbiter'. new()
         obj.root = path
         obj:dispatch_static(...)
         return obj
