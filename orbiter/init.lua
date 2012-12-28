@@ -291,7 +291,7 @@ local function url_split(vars)
     return res
 end
 
-local function send_error (client, code, message)
+local function send_error(client, code, message)
 	local header = "HTTP/1.1 " .. code .. "\r\nContent-Type:text/html\r\n"
 	local msg = (
     [[<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
@@ -301,14 +301,14 @@ local function send_error (client, code, message)
 <h1>%s</h1>
 <p>%s</p>
 <hr/>
-<small>Orbiter web server v0.1</small>
+<small>Orbiter web server v1.0</small>
 </body></html>]]):format(code, code, message or code)
 	header = header .. "Content-Length:" .. #msg .. "\r\n\r\n"
 	client:send(header)
 	client:send(msg)
 end
 
-local function send_headers (client,code, type, length, sheaders)
+local function send_headers (client, code, type, length, sheaders)
     local extra = ''
     if sheaders then
         local res, append = {}, table.insert
@@ -375,7 +375,6 @@ function MT:dispatch(web,path)
     return action(obj,web,unpack(captures))
 end
 
-local OK = '200 OK'
 local running,last_obj
 
 function _M.get_last_object()
@@ -411,6 +410,30 @@ local function socket_bind(host,port,backlog)
     res, err = sock:listen(backlog)
     if not res then return nil, err end
     return sock,port
+end
+
+----- Web class -----
+local Web =
+{
+	vars		= {},
+	input		= {},
+	headers		= {},
+	status		= "200 OK",
+	method		= "",
+	path_info	= ""
+}
+
+function Web:redirect(url)
+	self.status = "302 Found"
+	self.headers["Location"] = url
+	return "redirect"
+end
+
+function Web:new(o)
+	o = o or {}   -- create object if user does not provide one
+	setmetatable(o, self)
+	self.__index = self
+	return o
 end
 
 function MT:run(...)
@@ -477,15 +500,17 @@ function MT:run(...)
                     if url then file = url end
                 end
                 vars = vars and url_split(vars) or {}
-                web = {vars = headers, input = vars,
-                            method = method:lower(), path_info = file}
+				-- setup the web object
+				web = Web:new{ vars = headers, input = vars, method = method:lower(), path_info = file }
                 web[method=='GET' and 'GET' or 'POST'] = vars
-                file,obj = process_request_filters(web,file)
-                action,captures,obj = match_patterns(method,file,obj)
+
+                file, obj = process_request_filters(web,file)
+                action, captures, obj = match_patterns(method, file, obj)
                 if action then
                     -- @doc handlers may specify the MIME type of what they
                     -- return, if they choose; default is HTML.
-                    local status,content,mime,sheaders = pcall(action,obj,web,unpack(captures))
+                    local status, content, mime = pcall(action, obj, web, unpack(captures))
+
                     if status then
                         if not content and method ~= 'POST' then
                             status = false
@@ -502,14 +527,14 @@ function MT:run(...)
                             -- it will receive the content and mime type, and is expected to
                             -- return the same.
                             if self.content_filter then
-                                content,mime = self:content_filter(content,mime)
-                             end
+                                content, mime = self:content_filter(content, mime)
+							end
                             if not testing then
-                                send_headers(client,OK,mime or 'text/html',#content,sheaders)
+                                send_headers(client, web.status, mime or 'text/html', #content, web.headers)
                             end
                             client:send(content)
                         else
-                            send_error(client,content)
+                            send_error(client, content)
                         end
                     end
                 else -- unmatched pattern!!
