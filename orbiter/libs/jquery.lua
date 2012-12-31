@@ -3,7 +3,7 @@ local text = require 'orbiter.text'
 local bridge = require 'orbiter.bridge'
 local _M = {}
 
-local jquery_js = '/resources/jquery-1.4.2.min.js'
+local jquery_js = '/resources/jquery-1.8.3.min.js'
 
 local app = bridge.dispatch_static(text.lua_escape(jquery_js))
 

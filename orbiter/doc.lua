@@ -35,9 +35,55 @@ local unpack        =        unpack or table.unpack;
 local s_gsub        =   string.gsub;
 local s_char        =   string.char;
 local s_find        =   string.find;
+local s_sub         =   string.sub;
 local os            =            os;
 local pcall,require,io     =   pcall,require,io
-local split
+
+local function strip(s,chrs)
+    if not chrs then
+        chrs = '%s'
+    else
+        chrs = '['..chrs..']'
+    end
+
+	local i1,i2 = s_find(s,'^'..chrs..'*')
+	if i2 >= i1 then
+		s = s_sub(s,i2+1)
+	end
+    local i1,i2 = s_find(s,chrs..'*$')
+	if i2 >= i1 then
+		s = s_sub(s,1,i1-1)
+	end
+
+    return s
+end
+
+--- split a string into a list of strings separated by a delimiter.
+local function split(s,re)
+    local res = {}
+    re = '[^'..re..']+'
+    for k in s:gmatch(re) do t_insert(res, strip(k)) end
+    return res
+end
+
+local function export(name,mod)
+    local rawget,rawset = _G.rawget,_G.rawset
+    if not rawget(_G,'__PRIVATE_REQUIRE') then
+        local path = split(name,'%.')
+        local T = _G
+        for i = 1,#path-1 do
+            local p = rawget(T,path[i])
+            if not p then
+                p = {}
+                rawset(T,path[i],p)
+            end
+            T = p
+        end
+        rawset(T,path[#path],mod)
+    end
+    return mod
+end
+
 --module (...)
 local _M = {}
 local Doc = { __type = "doc" };
@@ -198,7 +244,7 @@ local function is_data(data)
 end
 
 local function prepare_data(data)
-    -- a hack for ensuring that $1 maps to first element of data, etc. 
+    -- a hack for ensuring that $1 maps to first element of data, etc.
     -- Either this or could change the gsub call just below.
     for i,v in ipairs(data) do
         data[tostring(i)] = v
@@ -366,7 +412,7 @@ local function _dostring(t, buf, self, xml_escape, parentns, idn, indent, attr_i
                 nsid = nsid + 1;
                 t_insert(buf, " xmlns:ns"..nsid.."='"..xml_escape(ns).."' ".."ns"..nsid..":"..attrk.."='"..xml_escape(v).."'");
             elseif not(k == "xmlns" and v == parentns) then
-                t_insert(buf, alf..k.."='"..xml_escape(v).."'"); 
+                t_insert(buf, alf..k.."='"..xml_escape(v).."'");
             end
         end
     end
@@ -551,21 +597,21 @@ function _M.basic_parse(s,all_text)
   return type(res[1])=='string' and res[2] or res[1]
 end
 
-function empty(attr)
+local function empty(attr)
     return not attr or not next(attr)
 end
 
-function is_text(s) return type(s) == 'string' end
-function is_element(d) return type(d) == 'table' and d.tag ~= nil end
+local function is_text(s) return type(s) == 'string' end
+local function is_element(d) return type(d) == 'table' and d.tag ~= nil end
 
 -- returns the key,value pair from a table if it has exactly one entry
-function has_one_element(t)
+local function has_one_element(t)
     local key,value = next(t)
     if next(t,key) ~= nil then return false end
     return key,value
 end
 
-function tostringn(d)
+local function tostringn(d)
     return tostring(d):sub(1,60)
 end
 
@@ -685,33 +731,6 @@ function Doc:match(pat)
     local res = {}
     local ret = match(self,pat,res,true)
     return res,ret
-end
-
-
---- split a string into a list of strings separated by a delimiter.
-function split(s,re)
-    local res = {}
-    re = '[^'..re..']+'
-    for k in s:gmatch(re) do t_insert(res,k) end
-    return res
-end
-
-local function export(name,mod)
-    local rawget,rawset = _G.rawget,_G.rawset
-    if not rawget(_G,'__PRIVATE_REQUIRE') then
-        local path = split(name,'%.')
-        local T = _G
-        for i = 1,#path-1 do
-            local p = rawget(T,path[i])
-            if not p then
-                p = {}
-                rawset(T,path[i],p)
-            end
-            T = p
-        end
-        rawset(T,path[#path],mod)
-    end
-    return mod
 end
 
 return export(...,_M)
