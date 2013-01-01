@@ -162,9 +162,10 @@ end
 local a,img = doc.tags 'a,img'
 
 function _M.link(addr,text)
-    if type(addr) == 'table' then addr,text = addr[1],addr[2] end
+	local id,class = nil
+    if type(addr) == 'table' then addr,text,id,class = addr[1],addr[2],addr.id,addr.class end
     if not text then text = addr end
-    return a{href=addr,text}
+    return a{id=id,href=addr,class=class,text}
 end
 
 function _M.image(src)
