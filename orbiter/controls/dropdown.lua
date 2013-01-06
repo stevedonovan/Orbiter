@@ -6,7 +6,7 @@ local _M = {}
 
 html.set_defaults {
     inline_style = [[
-    
+
 #sddm
 {	margin: 0;
 	padding: 0;
@@ -61,8 +61,8 @@ html.set_defaults {
 	#sddm div a:hover
 	{	background: #49A3FF;
 		color: #FFF
-	}   
-    
+	}
+
 ]],
     inline_script = [[
 
@@ -73,7 +73,7 @@ var ddmenuitem      = 0;
 
 // open hidden layer
 function mopen(id)
-{	
+{
 	// cancel close timer
 	mcancelclosetime();
 
@@ -108,7 +108,7 @@ function mcancelclosetime()
 }
 
 // close layer when click-out
-document.onclick = mclose; 
+document.onclick = mclose;
 // -->
     ]],
 }
@@ -137,4 +137,4 @@ function _M.menu(items)
     return {html.list(ls),div {style='clear:both',''}}
 end
 
-return _M  -- orbiter.widgets.dropdown
+return _M  -- orbiter.controls.dropdown

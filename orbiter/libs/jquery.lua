@@ -178,6 +178,10 @@ function js_tostring(args)
     return concat(args,',')
 end
 
+function _M.tostring(t)
+    return js_tostring{t}
+end
+
 local function jqw(code)
     return setmetatable({js = code},JMT)
 end

@@ -174,6 +174,7 @@ function dispatch_set_handler(method,obj,callback,...)
     if #pats == 1 then
         local pat = pats[1]
         assert(type(pat) == 'string')
+        if tracing then trace('pattern '..pat) end
         pat = '^'..pat..'$'
         local pat_rec = {pat=pat,callback=callback,self=obj,method=method}
         -- objects can override existing patterns, so we look for this pattern

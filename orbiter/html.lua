@@ -144,7 +144,7 @@ debug.setmetatable(print,{
     }
 })
 
-function _M.tags (list)
+local function _tags (list)
     if type(list) == 'table' and type(list[1])=='table' then
         local res = {}
         for i,item in ipairs(list) do res[i] = item[1] end
@@ -158,6 +158,15 @@ function _M.tags (list)
         return doc.tags(list)
     end
 end
+
+_M.tags = setmetatable({},{
+    __call = function(t,...) return _tags(...) end,
+    __index = function(t,tag)
+        local val = _tags(tag)
+        rawset(t,tag,val)
+        return val
+    end
+})
 
 local a,img = doc.tags 'a,img'
 
