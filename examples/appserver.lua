@@ -18,14 +18,14 @@ function filetime(fname)
         return -1
     end
 end
-    
+
 local object_of = {}
 local current_script
 local old_new = orbiter.new
 
 -- classic case of monkey-patching; we will be loading these apps into our single
 -- Lua state, and want to manage the namespaces. For instance, hello.lua just has '/'
--- which we would like to remap to '/hello'.  So this patch ensures that the patterns 
+-- which we would like to remap to '/hello'.  So this patch ensures that the patterns
 -- used by any loaded app will be prepended with the script name, which defines
 -- a namespace.  (This hack assumes that current_script is set before the script
 -- is loaded)
@@ -38,16 +38,16 @@ function orbiter.new(...)
         for i = 1,#args do
             res[i] = prefix .. args[i]
         end
-        return unpack(res)    
+        return unpack(res)
     end
     local old_dispatch_get = obj.dispatch_get
-    obj.dispatch_get = function(self,callback,...)    
+    obj.dispatch_get = function(self,callback,...)
         return old_dispatch_get(self,callback,prepend(...))
     end
-    local old_dispatch_post = obj.dispatch_post    
-    obj.dispatch_post = function(self,callback,...)    
+    local old_dispatch_post = obj.dispatch_post
+    obj.dispatch_post = function(self,callback,...)
         return old_dispatch_post(self,callback,prepend(...))
-    end    
+    end
     local old_dispatch_static = obj.dispatch_static
     obj.dispatch_static = function(self,...)
         return old_dispatch_static(self,prepend(...))
@@ -55,8 +55,8 @@ function orbiter.new(...)
     return obj
 end
 
---- the second part of the hack;  if a request comes from a particular app, then 
---- the namespace must be added.  If bonzo.lua links to '/start' then this filter 
+--- the second part of the hack;  if a request comes from a particular app, then
+--- the namespace must be added.  If bonzo.lua links to '/start' then this filter
 --- intercepts the original request and rewrites it as '/bonzo/start'.
 orbiter.add_request_filter(function(web,file)
     if web.vars and web.vars.HTTP_REFERER then
@@ -71,7 +71,7 @@ end)
 local h2,p = html.tags 'h2,p'
 
 function app:handle_dispatch(web,script,args)
-    args = args or '/'  -- default is index    
+    args = args or '/'  -- default is index
     current_script = script
     local obj = object_of [script]
     local lfile = script..'.lua'
@@ -104,7 +104,8 @@ function app:handle_index(web)
             '/form2',
             '/hello',
             '/simple-html',
-            '/trylua'          
+            '/trylua',
+            '/flot1',
        }
     }
 end

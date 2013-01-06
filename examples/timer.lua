@@ -18,15 +18,17 @@ local k = 0
 local style = [[
 #modalbox {
     position: absolute;
-    left: 200;
-    top: 400;
-    width: 400;
+    left: 50%;
+    top: 50%;
+    //width: 400px;
+    //margin-left: -200px;
+    //margin-top: -200px;
     background-color: #EEEEFF;
     border: 2px solid #000099;
 }
 #buttonrow {
     width: 100%;
-    background-color: #EEFFFF;
+    background-color: #EEEEFF;
 }
 ]]
 
@@ -43,7 +45,9 @@ function jq_submit_form(div,id) {
 
 ]]
 
-obj = {
+-- an auto form consists of an object and a form template
+
+local obj = {
     name = 'johnny',
     age = 12
 }
@@ -55,16 +59,17 @@ local f = form.new {
     "age","age",form.range(1,120)
 }
 
+-- called when the form is submitted..
 function timer:submit(web)
     f:prepare(web)
-    print('ding',obj.name,obj.age)
-    return jq.alert("howzit dammit!")
+    return jq.alert("howzit "..obj.name.."("..obj.age..")")
 end
 
 timer:dispatch_post(timer.submit,'/form/submit')
 
 function show_modal(f,web)
     f:prepare(web)
+    -- we embed the form in a modal box
     return jq 'body' : append (
         div { id = 'modalbox';
         f:show();
@@ -72,15 +77,7 @@ function show_modal(f,web)
           button_{"OK",onclick="jq_submit_form('modalbox','form1')"},
           button_{"Cancel",onclick="jq_close_form('modalbox','form1')"},
         }}
-    })
-end
-
-function button (label,callback)
-    local id = jq.data_to_id {click = callback}
-    return button_{label,
-        id = id; class='click-button';
-        onclick="jq_call_server('"..id.."','click-button','three')";
-    }
+    }):fadeIn()
 end
 
 function timer:index(web)
@@ -89,28 +86,8 @@ function timer:index(web)
         inline_style = style;
         inline_script = script;
         h2 'Setting a timer',
-        jq.button('Click me!',function()
-            return jq "#content" : find 'p'
-                : eq(0) : html 'no more strings!'
-                : _end()
-                : eq(1) : html 'ditto!'
-        end),
-        jq.button("Start timer",function()
-            return jq.timer(1000,function()
-                k = k + 1
-                if k == 6 then
-                    return jq.cancel_timer()
-                else
-                    return jq '#content' : after(p('go '..k))
-                end
-            end)
-        end),
-        jq.button("append!",function()
-            return show_modal(f,web)
-        end),
-        button("hello",function()
-            return jq.alert("bonzo!")
-        end),
+
+         --- after a second, we'll insert the 'content' div
         html.script(jq.timeout(500,function()
             return jq 'h2' : css ('color','red') : after (
                 div { id = "content";
@@ -121,6 +98,39 @@ function timer:index(web)
                 }
             )
         end)),
+
+        -- very simplest kind of callback
+        jq.button("Alert",function()
+            return jq.alert("bonzo!")
+        end),
+
+        -- a JQuery-like expression in Lua; the inserted div
+        -- has two paras which we patch to new values
+        jq.button('Patch Strings',function()
+            return jq "#content" : find 'p'
+                : eq(0) : html 'no more strings!'
+                : _end()
+                : eq(1) : html 'ditto!'
+        end),
+
+        -- the timer callback adds stuff after inserted div
+        jq.button("Start Timer",function()
+            return jq.timer(1000,function()
+                k = k + 1
+                if k == 6 then
+                    return jq.cancel_timer()
+                else
+                    return jq '#content' : after(p('go '..k))
+                end
+            end)
+        end),
+
+
+        jq.button("Show Modal",function()
+            return show_modal(f,web)
+        end),
+
+
     }
 end
 
