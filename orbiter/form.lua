@@ -205,7 +205,7 @@ function form.create (self,web)
         end
         if ftype == 'rows' then tbl = table.transpose(tbl) end
         contents = html.table{  data = tbl }
-    elseif spec.type == 'list' or spec.type == 'free' then
+    elseif spec.type == 'list' or spec.type == 'line' then
         local items = {}
         for i,item in ipairs(res) do
             append(items,item.label)

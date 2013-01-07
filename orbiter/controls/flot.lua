@@ -12,6 +12,17 @@ html.set_defaults {
     scripts = '/resources/javascript/jquery.flot.min.js',
 }
 
+local interactive
+
+local function set_interactive ()
+    if not interactive then
+        html.set_defaults {
+            scripts = '/resources/javascript/jquery.navigate.min.js',
+        }
+        interactive = true
+    end
+end
+
 local function interleave (xv,yv)
     local res = {}
     for i = 1,#xv do
@@ -80,6 +91,10 @@ function flot.Plot (opts)
     opts.width = nil -- no harm, but they're not valid options.
     opts.height = nil
     opts.xvalues = nil
+
+    if opts.zoom or opts.pan then
+        set_interactive ()
+    end
 
     local dataset = {}
 

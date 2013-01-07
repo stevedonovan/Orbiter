@@ -28,43 +28,53 @@ end
 
 local plot = flot.Plot { -- legend at 'south east' corner
    legend = { position = "se" },
+   zoom = {interactive=true},
+   pan = {interactive=true},
+   xaxis = { zoomRange = {0.1,10}, panRange={-10,10}},
+   yaxis = { zoomRange = {0.1,10}, panRange={-10,10}},
 }
 
 -- implicit form actions are just app methods,
--- but they can be called in the context of a JQuery AJAX post request,
--- and in that case they can return JS to be evaluated.
 function self:generate_series ()
-    local f,xmin,ymin
+    local f,xmin,xmax,xdelta
     -- sometimes exception handling is the Way to Go
     local ok,err = pcall(function()
         f = evaluate('function(x) return '..self.expr..' end')
         xmin = evaluate(self.xmin)
         xmax = evaluate(self.xmax)
+        xdelta = evaluate(self.xdelta)
         local data,append = {},table.insert
-        for x = xmin,xmax,0.1 do
+        for x = xmin,xmax,xdelta do
             append(data,{x,f(x)})
         end
         plot:clear()
         plot:add_series(self.expr,data)
     end)
+    -- form actions can be called in the context of a JQuery AJAX post request,
+    -- and in that case they can return JS to be evaluated.
     if not ok then
         return jq.alert("error: ",err)
     else
         return jq.eval(plot:update())
     end
+
 end
 
-self.expr = 'sin(x)'
+self.expr = 'sin(x)*cos(2*x)*sin(x/2)'
 self.xmin = '0'
 self.xmax = '2*pi'
+self.xdelta = '0.1'
 
 local f = form.new {
-    obj = self, type = 'free';  -- let it run along
+    obj = self, type = 'line';  -- let it run along
+    buttons = {}, -- no buttons please!
+    action = self.generate_series; -- implicit handler: calls prepare()
+
+   -- fields
     "expr","expr",form.non_blank,
     "start","xmin",5,  -- note: integer constraint is input size
     "finish","xmax",5,
-    buttons = {}, -- no buttons please!
-    action = self.generate_series, -- implicit handler: calls prepare()
+    "step",'xdelta',5,
 }
 
 local T = html.tags
@@ -72,11 +82,11 @@ local T = html.tags
 function self:index(web)
     f:prepare(web)
     return html {
-        T.h2 'Plotting a Lua Expression',
+        T.h2 'Plotting a Lua Expression using Flot',
         plot:show(),
         f:show(),
         jq.button("Go",f), -- want a JQuery button to submit the form
-        html.script(jq.timeout(300,f)),
+        html.script(jq.timeout(300,f)), -- force a form submission after 300ms
     }
 end
 
