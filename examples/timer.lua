@@ -77,7 +77,7 @@ function show_modal(f,web)
           button_{"OK",onclick="jq_submit_form('modalbox','form1')"},
           button_{"Cancel",onclick="jq_close_form('modalbox','form1')"},
         }}
-    }):fadeIn()
+    })
 end
 
 function timer:index(web)

@@ -54,7 +54,7 @@ local T = html.tags
 function self:index()
     return html {
         T.h2 'Drawing a Flot Graph',
-        plot:render(),
+        plot:show(),
         T.p {
             "Demonstrating Static Data generation ",
             html.link("http://stevedonovan.github.com/lua-flot/flot-lua.html","with Lua")

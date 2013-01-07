@@ -83,7 +83,7 @@ function flot.Plot (opts)
 
     local dataset = {}
 
-    function plot:render ()
+    function plot:show ()
         local id, data, options = self.idx, as_js(dataset), as_js(opts)
         --local code = render_script(self.idx,as_js(dataset),as_js(opts))
         return div {
@@ -94,6 +94,10 @@ function flot.Plot (opts)
 
     function plot:update ()
         return ('plot_%s(%s);'):format(self.idx, as_js(dataset))
+    end
+
+    function plot:clear ()
+        dataset = {}
     end
 
     local Series = {}

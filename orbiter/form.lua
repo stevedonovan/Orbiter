@@ -3,8 +3,6 @@ local orbiter = require 'orbiter'
 local html = require 'orbiter.html'
 local util = require 'orbiter.util'
 
---local dump = require 'pl.pretty'.dump
-
 local form = {}
 
 local button_name = '-button'
@@ -66,6 +64,7 @@ local converters = {
 }
 
 local select_,option_,form_,label_,textarea_,fieldset_,legend_ = html.tags 'select,option,form,label,textarea,fieldset,legend'
+local p = html.tags 'p'
 
 local function value_set(c,v) c:set_attrib('value',v) end
 local function value_get(c) return c:get_attrib('value') end
@@ -74,7 +73,9 @@ local function child1_get(c) return c[1] end
 
 
 local function input(type,name,value,size)
-    local ctrl = html.elem('input',{type=type,name=name,value=value,size = size})
+    local ctrl = html.elem('input',{
+        type=type,name=name,value=value,size=tostring(size)
+    })
     ctrl.set = value_set
     ctrl.get = value_get
     return ctrl
@@ -100,7 +101,7 @@ form.textarea = util.class(Constraint) {
 }
 
 local function text(name,value,size)
-    return input('text',name,value)
+    return input('text',name,value,size)
 end
 
 local function checkbox(name,value,size)
@@ -127,7 +128,7 @@ local function generate_control(obj,var,constraint)
     local converter = converters.string
     --print(var,constraint,value,vtype)
     if util.class_of(constraint,Constraint) then
-        print('value',value)
+        --print('value',value)
         cntrl = constraint:control(var,value)
         converter = constraint.converter
         constraint = constraint.constraint
@@ -139,6 +140,11 @@ local function generate_control(obj,var,constraint)
             converter = converters.boolean
             cntrl = checkbox(var,converter.tostring(value))
         elseif vtype == 'string' then
+            local size
+            if type(constraint) == 'number' then
+                size = constraint
+                constraint = nil
+            end
             if table.is_plain(constraint) then
                 local data = constraint
                 if not table.is_list(data) then
@@ -149,7 +155,7 @@ local function generate_control(obj,var,constraint)
                     constraint = nil
                 end
             else
-                cntrl = text(var,value)
+                cntrl = text(var,value,size)
             end
         end
     end
@@ -166,16 +172,15 @@ function form.new (t)
 end
 
 local append = table.insert
-
-function form.create_section(self)
-
-
-end
+local K = 1
 
 function form.create (self,web)
     local spec = self.spec_table
     spec.action = spec.action or web.path_info
-    spec.name = spec.name or 'form1'
+    if not spec.name then -- forms must have unique ids
+        spec.name = 'form'..K
+        K = K + 1
+    end
     local obj = spec.obj
     self.obj = obj
     local res = {}
@@ -200,19 +205,33 @@ function form.create (self,web)
         end
         if ftype == 'rows' then tbl = table.transpose(tbl) end
         contents = html.table{  data = tbl }
-    elseif spec.type == 'list' then
+    elseif spec.type == 'list' or spec.type == 'free' then
         local items = {}
         for i,item in ipairs(res) do
             append(items,item.label)
             append(items,item.cntrl)
         end
-        contents = html.list { data = items }
+        if spec.type == 'list' then
+            contents = html.list { data = items }
+        else
+            contents = p(items)
+        end
     end
     if spec.title then
         contents = fieldset_{legend_(spec.title),contents}
     end
+    self.id = spec.name
+    local action, obj = spec.action, self.obj
+    if obj.dispatch_post and type(action) == 'function' then
+        local callback = action
+        action = '/form/'..self.id
+        obj:dispatch_post(function(app,web)
+            self:prepare(web)
+            return callback(app,web,self)
+        end,action)
+    end
     self.body = form_{
-        name = spec.name; id = spec.name; action = spec.action, class = 'orbiter';
+        name = spec.name; id = self.id; action = action, class = 'orbiter';
         method = spec.method or 'post';
         contents,
     }

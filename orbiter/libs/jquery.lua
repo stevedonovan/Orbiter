@@ -13,7 +13,6 @@ html.set_defaults {
     function jq_call_server(id,klass,tid) {
         $.get('/jq/request',{id: id, group_id: tid, klass: klass });
     }
-
     function jq_file_click(klass,id,tid,event) {
         var href = $('#'+id).attr('title');
         if (href == "") {
@@ -27,14 +26,15 @@ html.set_defaults {
         event.stopImmediatePropagation();
         return false;
     }
-
     function jq_set_click(select,container_id) {
         $(select).click(function(event) {
             var klass = $(this).attr('class')
             return jq_file_click(klass,this.id,container_id,event);
         })
     }
-    function jq_do_click(container_id) {
+    function jq_submit_form(id) {
+        var form = $("form#"+id);
+        $.post(form.attr("action"), form.serialize());
     }
 ]]
 }
@@ -46,8 +46,12 @@ function _M.escape(s)
     return tostring(s):gsub("'","\\'"):gsub("\n","\\n")
 end
 
+function _M.eval (s)
+    return s, "text/javascript"
+end
+
 function _M.alert(s)
-    return 'alert("'.._M.escape(s)..'");', "text/javascript"
+    return _M.eval('alert("'.._M.escape(s)..'");')
 end
 
 local lua_data_map = {}
@@ -115,10 +119,20 @@ end
 
 local button_  = html.tags 'button'
 
+local function as_callback (callback)
+    if type(callback) == 'table' then
+        local id = callback.id
+        callback = function()
+            return 'jq_submit_form("'..id..'");'
+        end
+    end
+    return callback
+end
+
 function _M.button(label,callback)
     return {
         button_{class='click-button',
-            id = data_to_id {click = callback},
+            id = data_to_id {click = as_callback(callback)},
             label},
         html.script('jq_set_click("button.click-button","buttons")')
     }
@@ -211,7 +225,7 @@ function JMT.__call(obj,self,...)
 end
 
 function _M.timeout(ms,callback)
-    local id = data_to_id { click = callback }
+    local id = data_to_id { click = as_callback(callback) }
     return [[
         setTimeout("jq_call_server('%s',null,null)", %d)
     ]] % {id,ms}
@@ -232,7 +246,7 @@ function _M.use_timer()
 end
 
 function _M.timer(ms,callback)
-    local id = data_to_id { click = callback }
+    local id = data_to_id { click = as_callback(callback) }
     return 'jq_timer_data = ["%s",%d];setTimeout("jq_timer()", %d)' % {id,ms,ms}
 end
 
