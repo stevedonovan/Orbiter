@@ -18,7 +18,7 @@ local obj = {
 local phone_number = form.match('^%+%d+','must be international number +XXX...')
 
 local f = form.new {
-    obj = obj; 
+    obj = obj;
     title = 'Simple Generated Form',
     --action = '/'; name = 'form1';
     buttons = {'submit','try again'};
@@ -33,20 +33,23 @@ local h2,p = html.tags 'h2,p'
 
 local  hashlist = html.list:specialize {map = html.map2list, render = '%s = %s'}
 
+local last_mem = collectgarbage("count")
+
 function app:handle_form(web)
-    print("lua memory used",collectgarbage("count"))
-    if f:prepare(web) then
-        return html.as_text {            
+    local mem = collectgarbage("count")
+    print("lua memory used",mem - last_mem )
+    last_mem = mem
+    if f:prepare(web) then  -- generating the form (GET)
+        return html.as_text {
             f:show()
         }
-    else
+    else -- handling the received value (POST)
         return html.as_text {
             h2 'Form Results',
             hashlist { data = obj },
             p ("button clicked was '"..f.button..'"'),
-            --hashlist { data = web.input },
             html.link('/','Go back!'),
-        }    
+        }
     end
 end
 

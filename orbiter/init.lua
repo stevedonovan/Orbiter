@@ -58,19 +58,28 @@ end
 local MT = {}
 MT.__index = MT
 
+-- this is the object used by Orbiter itself to provide one basic piece of furniture,
+-- the favicon.
+local self
+
 function _M.new(...)
     local extensions = {...}
     local obj
     -- if passed a table which doesn't have register, then assume we're being called
     --    from module()
     -- use the module as the object, and manually add our methods to it.
-    if extensions[1] and not extensions[1]. register then
+    if extensions[1] and not extensions[1].register then
         obj = extensions[1]
         local m = extensions[1]
         for k,v in pairs(MT) do m[k] = v end
         table.remove(extensions,1)
     else
         obj = setmetatable({},MT)
+    end
+    if not self then
+        self = true -- hack to prevent endless recursion
+        self = _M.new()
+        self:dispatch_static '/resources/favicon%.ico'
     end
     -- remember to strip off the starting @
     local path = debug.getinfo(2, "S").source:sub(2):gsub('\\','/')
@@ -93,6 +102,8 @@ function _M.new(...)
     end
     return obj
 end
+
+
 
 ---- launch the browser ----
 
@@ -136,6 +147,45 @@ function launch_browser (url,browser)
     os.execute(browser..' '..url..'&')
 end
 
+----- Root namespace support ---------
+
+local function starts_with (path,prefix)
+    local i1,i2 = path:find(prefix)
+    return i1 ~= nil and i1 == 1 and i2 == #prefix
+end
+
+function _M.set_root (path)
+    _M.ROOT = '/'..path
+end
+
+function _M.prepend_root (path)
+    if _M.ROOT and not starts_with(path,_M.ROOT) then
+        path = _M.ROOT..path
+    end
+    return path
+end
+
+-- used to get actual path for static file lookup
+function _M.strip_root (file)
+    if _M.ROOT then
+        if file == _M.ROOT then
+            file = '/'
+        else
+            local k
+            file,k = file:gsub(_M.ROOT,'',1)
+            if k == 0 then error("request was NOT namespaced! "..file) end
+        end
+    end
+    return file
+end
+
+local function check_root (file)
+    if _M.ROOT and file == _M.ROOT then
+        file = file .. '/'
+    end
+    return file
+end
+
 ----- URL pattern dispatch --------------
 
 local dispatch_set_handler
@@ -174,6 +224,8 @@ function dispatch_set_handler(method,obj,callback,...)
     if #pats == 1 then
         local pat = pats[1]
         assert(type(pat) == 'string')
+        pat = _M.prepend_root(pat)
+        if tracing then print('pattern '..pat) end
         pat = '^'..pat..'$'
         local pat_rec = {pat=pat,callback=callback,self=obj,method=method}
         -- objects can override existing patterns, so we look for this pattern
@@ -202,6 +254,7 @@ end
 local function match_patterns(method,request,obj)
     local max_pat, max_i = 0
     local max_captures
+    request = check_root(request)
     for i = 1,#patterns do
         local tpat = patterns[i]
         if (tpat.method == '*' or tpat.method == method) and (obj==nil or tpat.self==obj) then
@@ -248,10 +301,6 @@ function _M.get_pattern_table()
     return patterns
 end
 
--- this is the object used by Orbiter itself to provide one basic piece of furniture,
--- the favicon.
-local self = _M.new()
-self:dispatch_static '/resources/favicon%.ico'
 
 --------------- HTTP Server --------------------
 ----  A little web server, based on code by Samuel Saint-Pettersen ----
@@ -506,6 +555,7 @@ function MT:get_path_to(file)
 end
 
 function MT:read_content(file)
+    file = _M.strip_root(file)
     if file == '/' then file = '/index.html' end
     local extension = file:match('%.(%a+)$') or 'other'
     local path = self:get_path_to(file)
@@ -515,6 +565,7 @@ function MT:read_content(file)
         local mime = mime_types[extension] or 'text/plain'
         return content,mime
     else
+        print('error: unable to find '..path)
         return false
     end
 end
@@ -601,6 +652,7 @@ function MT:run(...)
     end
 
     tracing = flags['trace']
+    _M.tracing = tracing
 
     if flags['help'] then
         print(help_text)

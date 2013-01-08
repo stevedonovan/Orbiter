@@ -1,3 +1,4 @@
+local orbiter = require 'orbiter'
 local html = require 'orbiter.html'
 local text = require 'orbiter.text'
 local bridge = require 'orbiter.bridge'
@@ -7,13 +8,14 @@ local jquery_js = '/resources/jquery-1.8.3.min.js'
 
 local app = bridge.dispatch_static(text.lua_escape(jquery_js))
 
+local ajax_request = '/jq/request'
+
 html.set_defaults {
    scripts = jquery_js,
-   inline_script = [[
+   inline_script = ([[
     function jq_call_server(id,klass,tid) {
-        $.get('/jq/request',{id: id, group_id: tid, klass: klass });
+        $.get("%s",{id: id, group_id: tid, klass: klass });
     }
-
     function jq_file_click(klass,id,tid,event) {
         var href = $('#'+id).attr('title');
         if (href == "") {
@@ -27,16 +29,17 @@ html.set_defaults {
         event.stopImmediatePropagation();
         return false;
     }
-
     function jq_set_click(select,container_id) {
         $(select).click(function(event) {
             var klass = $(this).attr('class')
             return jq_file_click(klass,this.id,container_id,event);
         })
     }
-    function jq_do_click(container_id) {
+    function jq_submit_form(id) {
+        var form = $("form#"+id);
+        $.post(form.attr("action"), form.serialize());
     }
-]]
+]]):format(orbiter.prepend_root(ajax_request))
 }
 
 ---- some useful functions ----
@@ -46,8 +49,12 @@ function _M.escape(s)
     return tostring(s):gsub("'","\\'"):gsub("\n","\\n")
 end
 
+function _M.eval (s)
+    return s, "text/javascript"
+end
+
 function _M.alert(s)
-    return 'alert("'.._M.escape(s)..'");', "text/javascript"
+    return _M.eval('alert("'.._M.escape(s)..'");')
 end
 
 local lua_data_map = {}
@@ -82,12 +89,12 @@ end
 -- explicitly if this is inappropriate.)
 function app:jq_request(web)
     local vars = web.input
-    print('request wuz ',vars.id, vars.group_id,vars.klass)
+    if orbiter.tracing then print('request wuz ',vars.id, vars.group_id,vars.klass) end
     local klass = vars.klass or 'nada'
     local idata = lua_data_map[vars.id] or 'nada'
     local tdata = lua_data_map[vars.group_id] or 'nada'
     if idata == 'nada' and tdata == 'nada' then
-        print('gotcha',vars.klass,vars.id,vars.group_id)
+        print('received nada',vars.klass,vars.id,vars.group_id)
         return ''
     end
     local resp,mtype
@@ -98,7 +105,7 @@ function app:jq_request(web)
     return _M.call_handler(idata,tdata,vars.id,'click')
 end
 
-app:dispatch_get(app.jq_request,'/jq/request')
+app:dispatch_get(app.jq_request,ajax_request)
 
 function _M.set_data(id,data)
     local this = { data = data }
@@ -115,10 +122,20 @@ end
 
 local button_  = html.tags 'button'
 
+local function as_callback (callback)
+    if type(callback) == 'table' then
+        local id = callback.id
+        callback = function()
+            return 'jq_submit_form("'..id..'");'
+        end
+    end
+    return callback
+end
+
 function _M.button(label,callback)
     return {
         button_{class='click-button',
-            id = data_to_id {click = callback},
+            id = data_to_id {click = as_callback(callback)},
             label},
         html.script('jq_set_click("button.click-button","buttons")')
     }
@@ -178,6 +195,10 @@ function js_tostring(args)
     return concat(args,',')
 end
 
+function _M.tostring(t)
+    return js_tostring{t}
+end
+
 local function jqw(code)
     return setmetatable({js = code},JMT)
 end
@@ -207,10 +228,14 @@ function JMT.__call(obj,self,...)
 end
 
 function _M.timeout(ms,callback)
-    local id = data_to_id { click = callback }
+    local id = data_to_id { click = as_callback(callback) }
     return [[
         setTimeout("jq_call_server('%s',null,null)", %d)
     ]] % {id,ms}
+end
+
+function _M.timeout_script (ms,callback)
+    return html.script(_M.timeout(ms,callback))
 end
 
 function _M.use_timer()
@@ -228,7 +253,7 @@ function _M.use_timer()
 end
 
 function _M.timer(ms,callback)
-    local id = data_to_id { click = callback }
+    local id = data_to_id { click = as_callback(callback) }
     return 'jq_timer_data = ["%s",%d];setTimeout("jq_timer()", %d)' % {id,ms,ms}
 end
 
