@@ -4,6 +4,7 @@
 -- and tables.
 
 local _M = {} -- our module
+local orbiter = require 'orbiter'
 local doc = require 'orbiter.doc'
 local text = require 'orbiter.text'
 local util = require 'orbiter.util'
@@ -67,7 +68,7 @@ local function make_head(head,t,field,tag,rtype,source)
             end
         end
         if source then
-            hi[source] = item
+            hi[source] = orbiter.prepend_root(item)
             item = ''
         end
         hi[1] = _M.literal(item)
@@ -174,6 +175,7 @@ function _M.link(addr,text)
 	local id,class = nil
     if type(addr) == 'table' then addr,text,id,class = addr[1],addr[2],addr.id,addr.class end
     if not text then text = addr end
+    addr = orbiter.prepend_root(addr)
     return a{id=id,href=addr,class=class,text}
 end
 

@@ -2,6 +2,8 @@
 -- AJAX data.
 -- See http://stevedonovan.github.com/lua-flot/flot-lua.html
 local orbiter = require 'orbiter'
+orbiter.set_root 'dynamic'
+
 local html = require 'orbiter.html'
 local flot = require 'orbiter.controls.flot'
 local jq = require 'orbiter.libs.jquery'
@@ -28,10 +30,6 @@ end
 
 local plot = flot.Plot { -- legend at 'south east' corner
    legend = { position = "se" },
-   zoom = {interactive=true},
-   pan = {interactive=true},
-   xaxis = { zoomRange = {0.1,10}, panRange={-10,10}},
-   yaxis = { zoomRange = {0.1,10}, panRange={-10,10}},
 }
 
 -- implicit form actions are just app methods,
@@ -86,7 +84,7 @@ function self:index(web)
         plot:show(),
         f:show(),
         jq.button("Go",f), -- want a JQuery button to submit the form
-        html.script(jq.timeout(300,f)), -- force a form submission after 300ms
+        jq.timeout_script(300,f), -- force a form submission after 300ms
     }
 end
 

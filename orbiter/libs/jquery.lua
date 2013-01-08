@@ -1,3 +1,4 @@
+local orbiter = require 'orbiter'
 local html = require 'orbiter.html'
 local text = require 'orbiter.text'
 local bridge = require 'orbiter.bridge'
@@ -7,11 +8,13 @@ local jquery_js = '/resources/jquery-1.8.3.min.js'
 
 local app = bridge.dispatch_static(text.lua_escape(jquery_js))
 
+local ajax_request = '/jq/request'
+
 html.set_defaults {
    scripts = jquery_js,
-   inline_script = [[
+   inline_script = ([[
     function jq_call_server(id,klass,tid) {
-        $.get('/jq/request',{id: id, group_id: tid, klass: klass });
+        $.get("%s",{id: id, group_id: tid, klass: klass });
     }
     function jq_file_click(klass,id,tid,event) {
         var href = $('#'+id).attr('title');
@@ -36,7 +39,7 @@ html.set_defaults {
         var form = $("form#"+id);
         $.post(form.attr("action"), form.serialize());
     }
-]]
+]]):format(orbiter.prepend_root(ajax_request))
 }
 
 ---- some useful functions ----
@@ -86,12 +89,12 @@ end
 -- explicitly if this is inappropriate.)
 function app:jq_request(web)
     local vars = web.input
-    print('request wuz ',vars.id, vars.group_id,vars.klass)
+    if orbiter.tracing then print('request wuz ',vars.id, vars.group_id,vars.klass) end
     local klass = vars.klass or 'nada'
     local idata = lua_data_map[vars.id] or 'nada'
     local tdata = lua_data_map[vars.group_id] or 'nada'
     if idata == 'nada' and tdata == 'nada' then
-        print('gotcha',vars.klass,vars.id,vars.group_id)
+        print('received nada',vars.klass,vars.id,vars.group_id)
         return ''
     end
     local resp,mtype
@@ -102,7 +105,7 @@ function app:jq_request(web)
     return _M.call_handler(idata,tdata,vars.id,'click')
 end
 
-app:dispatch_get(app.jq_request,'/jq/request')
+app:dispatch_get(app.jq_request,ajax_request)
 
 function _M.set_data(id,data)
     local this = { data = data }
@@ -229,6 +232,10 @@ function _M.timeout(ms,callback)
     return [[
         setTimeout("jq_call_server('%s',null,null)", %d)
     ]] % {id,ms}
+end
+
+function _M.timeout_script (ms,callback)
+    return html.script(_M.timeout(ms,callback))
 end
 
 function _M.use_timer()

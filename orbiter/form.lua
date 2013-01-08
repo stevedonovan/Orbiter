@@ -224,7 +224,7 @@ function form.create (self,web)
     local action, obj = spec.action, self.obj
     if obj.dispatch_post and type(action) == 'function' then
         local callback = action
-        action = '/form/'..self.id
+        action = orbiter.prepend_root('/form/'..self.id)
         obj:dispatch_post(function(app,web)
             self:prepare(web)
             return callback(app,web,self)
