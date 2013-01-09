@@ -386,7 +386,9 @@ do
         local tt = type(str)
         if tt ~= 'string' then
             str = tostring(str)
-            print('**warning**',tt,'is not a string',str)
+            if tt ~= 'number' then
+                print('**warning**',tt,'is not a string',str)
+            end
         end
         return str
     end

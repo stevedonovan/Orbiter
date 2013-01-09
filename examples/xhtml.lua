@@ -10,7 +10,7 @@ function app:index()
         h2 "hello",
         svg { xmlns="http://www.w3.org/2000/svg"; version="1.1";
             style="width:100%; height:100%";
-            rect {x = '0', y = '0', width = '200', height = '200',
+            rect {x = 0, y = 0, width = 200, height = 200,
                 style = 'fill:none; stroke: black'
             }
         }

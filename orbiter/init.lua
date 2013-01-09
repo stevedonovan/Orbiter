@@ -150,7 +150,7 @@ end
 ----- Root namespace support ---------
 
 local function starts_with (path,prefix)
-    local i1,i2 = path:find(prefix)
+    local i1,i2 = path:find(prefix,1,true)  -- plain match
     return i1 ~= nil and i1 == 1 and i2 == #prefix
 end
 
@@ -159,7 +159,7 @@ function _M.set_root (path)
 end
 
 function _M.prepend_root (path)
-    if _M.ROOT and not starts_with(path,_M.ROOT) then
+    if _M.ROOT and not path:match '^http[s]://' and not starts_with(path,_M.ROOT) then
         path = _M.ROOT..path
     end
     return path
@@ -179,6 +179,7 @@ function _M.strip_root (file)
     return file
 end
 
+-- hack to let /root as well as /root/ be recognized
 local function check_root (file)
     if _M.ROOT and file == _M.ROOT then
         file = file .. '/'
