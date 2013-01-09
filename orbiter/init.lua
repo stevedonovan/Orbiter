@@ -9,7 +9,7 @@ local Windows = DIRSEP == '\\'
 local t_remove, t_insert, append = table.remove, table.insert, table.insert
 local tracing, browser
 local help_text = [[
- **** Orbiter v0.2 ****
+ **** Orbiter v0.3 ****
 --addr=IP address (default localhost)
 --port=HTTP port (default 8080)
 --trace   print out some useful verbosity
@@ -307,13 +307,163 @@ end
 -- headers and error handling much improved by Ignacio
 
 local mime_types = {
-    gif = 'image/gif',
-    ico = 'image/x-icon',
-    png = 'image/png',
-    html = 'text/html',
-    js = 'text/javascript',
-    css = 'text/css',
     other = 'text/plain',
+	ez = "application/andrew-inset",
+	atom = "application/atom+xml",
+	hqx = "application/mac-binhex40",
+	cpt = "application/mac-compactpro",
+	mathml = "application/mathml+xml",
+	doc = "application/msword",
+	bin = "application/octet-stream",
+	dms = "application/octet-stream",
+	lha = "application/octet-stream",
+	lzh = "application/octet-stream",
+	exe = "application/octet-stream",
+	class = "application/octet-stream",
+	so = "application/octet-stream",
+	dll = "application/octet-stream",
+	dmg = "application/octet-stream",
+	oda = "application/oda",
+	ogg = "application/ogg",
+	pdf = "application/pdf",
+	ai = "application/postscript",
+	eps = "application/postscript",
+	ps = "application/postscript",
+	rdf = "application/rdf+xml",
+	smi = "application/smil",
+	smil = "application/smil",
+	gram = "application/srgs",
+	grxml = "application/srgs+xml",
+	mif = "application/vnd.mif",
+	xul = "application/vnd.mozilla.xul+xml",
+	xls = "application/vnd.ms-excel",
+	ppt = "application/vnd.ms-powerpoint",
+	rm = "application/vnd.rn-realmedia",
+	wbxml = "application/vnd.wap.wbxml",
+	wmlc = "application/vnd.wap.wmlc",
+	wmlsc = "application/vnd.wap.wmlscriptc",
+	vxml = "application/voicexml+xml",
+	bcpio = "application/x-bcpio",
+	vcd = "application/x-cdlink",
+	pgn = "application/x-chess-pgn",
+	cpio = "application/x-cpio",
+	csh = "application/x-csh",
+	dcr = "application/x-director",
+	dir = "application/x-director",
+	dxr = "application/x-director",
+	dvi = "application/x-dvi",
+	spl = "application/x-futuresplash",
+	gtar = "application/x-gtar",
+	hdf = "application/x-hdf",
+	xhtml = "application/xhtml+xml",
+	xht = "application/xhtml+xml",
+	js = "application/x-javascript",
+	skp = "application/x-koan",
+	skd = "application/x-koan",
+	skt = "application/x-koan",
+	skm = "application/x-koan",
+	latex = "application/x-latex",
+	xml = "application/xml",
+	xsl = "application/xml",
+	dtd = "application/xml-dtd",
+	nc = "application/x-netcdf",
+	cdf = "application/x-netcdf",
+	sh = "application/x-sh",
+	shar = "application/x-shar",
+	swf = "application/x-shockwave-flash",
+	xslt = "application/xslt+xml",
+	sit = "application/x-stuffit",
+	sv4cpio = "application/x-sv4cpio",
+	sv4crc = "application/x-sv4crc",
+	tar = "application/x-tar",
+	tcl = "application/x-tcl",
+	tex = "application/x-tex",
+	texinfo = "application/x-texinfo",
+	texi = "application/x-texinfo",
+	t = "application/x-troff",
+	tr = "application/x-troff",
+	roff = "application/x-troff",
+	man = "application/x-troff-man",
+	me = "application/x-troff-me",
+	ms = "application/x-troff-ms",
+	ustar = "application/x-ustar",
+	src = "application/x-wais-source",
+	zip = "application/zip",
+	au = "audio/basic",
+	snd = "audio/basic",
+	mid = "audio/midi",
+	midi = "audio/midi",
+	kar = "audio/midi",
+	mpga = "audio/mpeg",
+	mp2 = "audio/mpeg",
+	mp3 = "audio/mpeg",
+	aif = "audio/x-aiff",
+	aiff = "audio/x-aiff",
+	aifc = "audio/x-aiff",
+	m3u = "audio/x-mpegurl",
+	ram = "audio/x-pn-realaudio",
+	ra = "audio/x-pn-realaudio",
+	wav = "audio/x-wav",
+	pdb = "chemical/x-pdb",
+	xyz = "chemical/x-xyz",
+	bmp = "image/bmp",
+	cgm = "image/cgm",
+	gif = "image/gif",
+	ief = "image/ief",
+	jpeg = "image/jpeg",
+	jpg = "image/jpeg",
+	jpe = "image/jpeg",
+	png = "image/png",
+	svg = "image/svg+xml",
+	svgz = "image/svg+xml",
+	tiff = "image/tiff",
+	tif = "image/tiff",
+	djvu = "image/vnd.djvu",
+	djv = "image/vnd.djvu",
+	wbmp = "image/vnd.wap.wbmp",
+	ras = "image/x-cmu-raster",
+	ico = "image/x-icon",
+	pnm = "image/x-portable-anymap",
+	pbm = "image/x-portable-bitmap",
+	pgm = "image/x-portable-graymap",
+	ppm = "image/x-portable-pixmap",
+	rgb = "image/x-rgb",
+	xbm = "image/x-xbitmap",
+	xpm = "image/x-xpixmap",
+	xwd = "image/x-xwindowdump",
+	igs = "model/iges",
+	iges = "model/iges",
+	msh = "model/mesh",
+	mesh = "model/mesh",
+	silo = "model/mesh",
+	wrl = "model/vrml",
+	vrml = "model/vrml",
+	ics = "text/calendar",
+	ifb = "text/calendar",
+	css = "text/css",
+	html = "text/html",
+	htm = "text/html",
+	asc = "text/plain",
+	txt = "text/plain",
+	rtx = "text/richtext",
+	rtf = "text/rtf",
+	sgml = "text/sgml",
+	sgm = "text/sgml",
+	tsv = "text/tab-separated-values",
+	wml = "text/vnd.wap.wml",
+	wmls = "text/vnd.wap.wmlscript",
+	etx = "text/x-setext",
+	mpeg = "video/mpeg",
+	mpg = "video/mpeg",
+	mpe = "video/mpeg",
+	qt = "video/quicktime",
+	mov = "video/quicktime",
+	mxu = "video/vnd.mpegurl",
+	avi = "video/x-msvideo",
+	movie = "video/x-sgi-movie",
+	ice = "x-conference/x-cooltalk",
+	rss = "application/rss+xml",
+	atom = "application/atom+xml"
 }
 
 local function url_decode(url)
@@ -323,6 +473,15 @@ local function url_decode(url)
         return string.char(c)  -- ('%s'):format(?
     end)
     return url
+end
+
+local function url_encode(str)
+  if not str then return nil end
+  str = string.gsub (str, "\n", "\r\n")
+  str = string.gsub (str, "([^%w ])",
+        function (c) return string.format ("%%%02X", string.byte(c)) end)
+  str = string.gsub (str, " ", "+")
+  return str
 end
 
 local function url_split(vars)
@@ -350,7 +509,7 @@ local function send_error(client, code, message)
 <h1>%s</h1>
 <p>%s</p>
 <hr/>
-<small>Orbiter web server v1.0</small>
+<small>Orbiter Web Server v1.0</small>
 </body></html>]]):format(code, code, message or code)
 	header = header .. "Content-Length:" .. #msg .. "\r\n\r\n"
 	client:send(header)
@@ -476,8 +635,22 @@ local Web =
 
 function Web:redirect(url)
 	self.status = "302 Found"
-	self.headers["Location"] = url
+	self.headers["Location"] = _M.prepend_root(url)
 	return "redirect"
+end
+
+function Web:link(url, params)
+	local link = {}
+	-- url encode parameters
+	for k, v in pairs(params or {}) do
+		link[#link + 1] = k .. "=" .. url_encode(v)
+	end
+	local qs = table.concat(link, "&")
+	if qs and qs ~= "" then
+		return _M.prepend_root(url) .. "?" .. qs
+	else
+		return _M.prepend_root(url)
+	end
 end
 
 function Web:new(o)
