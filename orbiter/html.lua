@@ -180,7 +180,7 @@ function _M.link(addr,text)
 end
 
 function _M.image(src)
-    return img{src=src}
+    return img{src=orbiter.prepend_root(src)}
 end
 
 function _M.format(patt)

@@ -9,7 +9,7 @@ local Windows = DIRSEP == '\\'
 local t_remove, t_insert, append = table.remove, table.insert, table.insert
 local tracing, browser
 local help_text = [[
- **** Orbiter v0.2 ****
+ **** Orbiter v0.3 ****
 --addr=IP address (default localhost)
 --port=HTTP port (default 8080)
 --trace   print out some useful verbosity
@@ -475,6 +475,15 @@ local function url_decode(url)
     return url
 end
 
+local function url_encode(str)
+  if not str then return nil end
+  str = string.gsub (str, "\n", "\r\n")
+  str = string.gsub (str, "([^%w ])",
+        function (c) return string.format ("%%%02X", string.byte(c)) end)
+  str = string.gsub (str, " ", "+")
+  return str
+end
+
 local function url_split(vars)
     local res = {}
     for pair in vars:gmatch('[^&]+') do
@@ -626,8 +635,22 @@ local Web =
 
 function Web:redirect(url)
 	self.status = "302 Found"
-	self.headers["Location"] = url
+	self.headers["Location"] = _M.prepend_root(url)
 	return "redirect"
+end
+
+function Web:link(url, params)
+	local link = {}
+	-- url encode parameters
+	for k, v in pairs(params or {}) do
+		link[#link + 1] = k .. "=" .. url_encode(v)
+	end
+	local qs = table.concat(link, "&")
+	if qs and qs ~= "" then
+		return _M.prepend_root(url) .. "?" .. qs
+	else
+		return _M.prepend_root(url)
+	end
 end
 
 function Web:new(o)
