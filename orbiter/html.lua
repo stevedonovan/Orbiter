@@ -172,15 +172,15 @@ _M.tags = setmetatable({},{
 local a,img = doc.tags 'a,img'
 
 function _M.link(addr,text)
-	local id,class = nil
-    if type(addr) == 'table' then addr,text,id,class = addr[1],addr[2],addr.id,addr.class end
+    local id,class,style,title,alt,onclick = nil
+    if type(addr) == 'table' then addr,text,id,class,style,title,alt,onclick = addr[1],addr[2],addr.id,addr.class,addr.style,addr.title,addr.alt,addr.onclick end
     if not text then text = addr end
     addr = orbiter.prepend_root(addr)
-    return a{id=id,href=addr,class=class,text}
+    return a{id=id,href=addr,class=class,style=style,title=title,alt=alt,onclick=onclick,text}
 end
 
 function _M.image(src)
-    return img{src=src}
+    return img{src=orbiter.prepend_root(src)}
 end
 
 function _M.format(patt)
