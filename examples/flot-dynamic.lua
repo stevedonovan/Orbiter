@@ -29,7 +29,7 @@ local function evaluate (expr)
 end
 
 local plot = flot.Plot { -- legend at 'south east' corner
-   legend = { position = "se" },
+   legend = { position = "se" }, interactive = true,
 }
 
 -- implicit form actions are just app methods,
@@ -84,6 +84,12 @@ function self:index(web)
         plot:show(),
         f:show(),
         jq.button("Go",f), -- want a JQuery button to submit the form
+        jq.button('Zoom',function()
+            return plot:zoom()
+        end),
+        jq.button('Unzoom',function()
+            return plot:zoomOut()
+        end),
         jq.timeout_script(300,f), -- force a form submission after 300ms
     }
 end

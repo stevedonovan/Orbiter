@@ -17,7 +17,7 @@ local interactive
 local function set_interactive ()
     if not interactive then
         html.set_defaults {
-            scripts = '/resources/javascript/jquery.navigate.min.js',
+            scripts = '/resources/javascript/jquery.flot.navigate.min.js',
         }
         interactive = true
     end
@@ -72,8 +72,9 @@ local kount = 0
 local div = html.tags 'div'
 
 local script = [[
+var plotvar_%s
 function plot_%s (data) {
-    $.plot($("#%s"),data,%s);
+    plotvar_%s = $.plot($("#%s"),data,%s);
 }
 $(function () {
     plot_%s (%s);
@@ -92,6 +93,12 @@ function flot.Plot (opts)
     opts.height = nil
     opts.xvalues = nil
 
+    -- navigation plugin
+    if opts.interactive ~= nil then
+        opts.zoom = {interactive=opts.interactive}
+        opts.pan = {interactive=opts.interactive}
+        opts.interactive = nil
+    end
     if opts.zoom or opts.pan then
         set_interactive ()
     end
@@ -103,7 +110,7 @@ function flot.Plot (opts)
         --local code = render_script(self.idx,as_js(dataset),as_js(opts))
         return div {
             div {id=self.idx, style=('width:%spx;height:%spx'):format(self.width,self.height),''},
-            html.script(script:format(id,id,options,id,data))
+            html.script(script:format(id,id,id,id,options,id,data))
         }
     end
 
@@ -142,8 +149,20 @@ function flot.Plot (opts)
         return series
     end
 
+    local function plotmethod (name)
+        plot[name] = function(self)
+            return 'plotvar_'..self.idx..'.'..name..'()'
+        end
+    end
 
-   return plot
+    if interactive then
+        plotmethod 'zoomOut'
+        plotmethod 'zoom'
+        plotmethod 'pan'
+    end
+
+
+    return plot
 end
 
 
