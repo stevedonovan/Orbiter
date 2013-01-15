@@ -7,7 +7,7 @@ local data_to_id,set_handler,set_data = jq.data_to_id, jq.set_handler, jq.set_da
 local app = orbiter.new(html)
 
 html.set_defaults {
-    styles = "/resources/css/jquery.treeview.css",  
+    styles = "/resources/css/jquery.treeview.css",
     scripts = "/resources/javascript/jquery.treeview.js",
     inline_script = [[
     function treeview_create(id,body) {
@@ -50,7 +50,7 @@ function file (data)
     if data.attribs then
         table.update(args,data.attribs)
     end
-    return {        
+    return {
         span(args),
         id = data_to_id(data)
     }
@@ -75,7 +75,7 @@ local Folder = util.class(){
 
 function process_children(children)
     for i,item in ipairs(children) do
-        if not util.class_of(item,Folder) and not html.is_doc(item) then 
+        if not util.class_of(item,Folder) and not html.is_doc(item) then
             children[i] = file(item)
         end
     end
@@ -92,7 +92,7 @@ function folder (children)
     local hidden = children.hidden
     children.hidden = nil
     local data = children.data or label
-    children.data = nil    
+    children.data = nil
     if hidden and #children==0 then children = {''} end
     process_children(children)
     return Folder{span{label,class='folder'},
@@ -118,9 +118,9 @@ function treeview (t)
     set_handler('click',id,t)
     set_handler('expanding',id,t)
     set_handler('collapsing',id,t)
-    return {         
+    return {
         html.list(t),
-        html.script ('treeview_create("%s","")' % id)
+        html.script (('treeview_create("%s","")'):format(id))
     }
 end
 
@@ -128,19 +128,19 @@ function tree_fragment(id,t)
     local bb = fragment(t)
     local markup = html.raw_tostring(bb)
     print('markup\n',markup)
-    return 'treeview_create("%s","%s")' % {id,markup}
+    return ('treeview_create("%s","%s")'):format(id,markup)
 end
 
 function add_tree(t)
     return function() return tree_fragment(t.id,t) end
-end        
+end
 
 -- note that any item in the html list can itself be a simple list; in this case
 -- the items will be appended to the list. This allows the treeview() function
 -- to do its magic without needing to return a single element.
 function app:index(web)
     return html {
-        treeview{id='browser'; 
+        treeview {id='browser';
             click = function(data)
                 return jq.alert("clicked "..tostring(data))
             end;
@@ -159,15 +159,14 @@ function app:index(web)
                         'fred','Pebbles','Wilma',
                         }
                     },
-                    link('http://snippets.luacode.org','so fine')
-                }
+                link('http://snippets.luacode.org','so fine')
             }
         },
         jq.button('Add',add_tree{id="browser",
                     "more",
                     'and again',
                     'finally'
-        });            
+        });
     }
 end
 

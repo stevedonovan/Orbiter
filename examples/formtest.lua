@@ -31,7 +31,7 @@ local f = form.new {
 
 local h2,p = html.tags 'h2,p'
 
-local  hashlist = html.list:specialize {map = html.map2list, render = '%s = %s'}
+local  hashlist = html.specialize (html.list,{map = html.map2list, render = '%s = %s'})
 
 local last_mem = collectgarbage("count")
 
