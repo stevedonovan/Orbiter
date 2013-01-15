@@ -61,7 +61,7 @@ local lua_data_map = {}
 local lua_data_index = 1
 
 function _M.data_to_id(data)
-    local ret = 'D%x' % lua_data_index
+    local ret = ('D%x'):format(lua_data_index)
     lua_data_index = lua_data_index + 1
     lua_data_map[ret] = data
     return ret
@@ -229,9 +229,9 @@ end
 
 function _M.timeout(ms,callback)
     local id = data_to_id { click = as_callback(callback) }
-    return [[
+    return ([[
         setTimeout("jq_call_server('%s',null,null)", %d)
-    ]] % {id,ms}
+    ]]):format(id,ms)
 end
 
 function _M.timeout_script (ms,callback)
@@ -254,7 +254,7 @@ end
 
 function _M.timer(ms,callback)
     local id = data_to_id { click = as_callback(callback) }
-    return 'jq_timer_data = ["%s",%d];setTimeout("jq_timer()", %d)' % {id,ms,ms}
+    return ('jq_timer_data = ["%s",%d];setTimeout("jq_timer()", %d)'):format(id,ms,ms)
 end
 
 function _M.cancel_timer()

@@ -8,7 +8,7 @@ local html = require 'orbiter.html'
 local form2 = orbiter.new(html)
 
 local text,button = html.tags {
-  {'input',type='text',name=1}, 
+  {'input',type='text',name=1},
   {'input',type='submit',value=1,name='button'},
 }
 
@@ -21,7 +21,7 @@ function loption(ls)
     end
     return unpack(res)
 end
-  
+
 function form2:show(web)
     return html {
         form { name = 'input', action='/results',method='post';
@@ -35,7 +35,7 @@ function form2:show(web)
     }
 end
 
-local  hashlist = html.list:specialize {map = html.map2list, render = '%s = %s'}
+local  hashlist = html.specialize (html.list, {map = html.map2list, render = '%s = %s'})
 
 function form2:results(web)
     return html {

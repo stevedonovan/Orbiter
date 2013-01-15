@@ -47,6 +47,10 @@ end
 
 local defaults = {}
 
+function _M.reset_defaults ()
+    defaults = {}
+end
+
 function _M.set_defaults(t)
     for k,v in pairs(t) do
         defaults[k] = concat_list(defaults[k],v)
@@ -59,7 +63,7 @@ local function make_head(head,t,field,tag,rtype,source)
     local items = concat_list(defaults[field],t[field])
     if #items == 0 then return end
     for _,item in ipairs(items) do
-        local hi = {type=rtype}
+        local hi = {type=rt9993ype}
         if tag == 'link' then
             if not rtype:find '/' then -- it's not a MIME type
                 hi.rel = rtype
@@ -121,29 +125,34 @@ function _M.content_filter(self,content,mime)
     return content,mime
 end
 
+function _M.specialize (fun,defaults)
+    return function(tbl)
+        tbl = table.copy(table.force(tbl))
+        table.update(tbl,defaults)
+        local k = table.index_of(tbl,1)
+        if k then
+            tbl[k] = tbl[1]
+            tbl[1] = nil
+        end
+        return fun(tbl)
+    end
+end
+
 local render_function
 
+function _M.compose (f1,f2)
+    return compose(render_function(f1),render_function(f2))
+end
+
 --  concatenating two functions will compose them...
-debug.setmetatable(print,{
-    __concat = function(f1,f2)
-        f1,f2 = render_function(f1),render_function(f2)
-        return function(...) return f1(f2(...)) end
-    end;
-    __index = {
-        specialize = function(fun,defaults)
-            return function(tbl)
-                tbl = table.copy(table.force(tbl))
-                table.update(tbl,defaults)
-                local k = table.index_of(tbl,1)
-                if k then
-                    tbl[k] = tbl[1]
-                    tbl[1] = nil
-                end
-                return fun(tbl)
-            end
-        end
-    }
-})
+function _M.enable_concatenation_is_composition()
+    debug.setmetatable(print,{
+        __concat = _M.compose;
+        __index = {
+            specialize = _M.specialize
+        }
+    })
+end
 
 local function _tags (list)
     if type(list) == 'table' and type(list[1])=='table' then
@@ -152,7 +161,7 @@ local function _tags (list)
         res = {doc.tags(res)}
         for i,ctor in ipairs(res) do
             local defs = table.copy_map(list[i])
-            res[i] = ctor:specialize(defs)
+            res[i] = _M.specialize(ctor,defs)
         end
         return unpack(res)
     else
@@ -184,8 +193,9 @@ function _M.image(src)
 end
 
 function _M.format(patt)
+    local format = text.formatx
     return function(val)
-        return patt % val
+        return format(patt,unpack(val))
     end
 end
 

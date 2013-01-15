@@ -23,13 +23,13 @@ function _M.set_mode(mode)
 end
 
 function _M.calendar(form,control,mode)
-    return html.script ( [[
+    return html.script ( ([[
  	new tcal ({
 		formname: '%s',
 		controlname: '%s',
         mode: '%s'
-	});   
-    ]] % {form,control,mode} )
+	});
+    ]]):format(form,control,mode) )
 end
 
 local input = html.tags 'input'

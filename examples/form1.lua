@@ -15,7 +15,7 @@ First name: <input title='firstname' type="text" name="firstname" /><br />
 Last name: <input title='lastname' type="text" name="lastname" /><br />
 <input type="submit" value="Submit" />
 </form>
-]]        
+]]
 
 function form:show(web)
     return html {
@@ -28,7 +28,7 @@ local function make_list(t)
    local res = {}
    append(res,'<ul>')
    for k,v in pairs(t) do
-        append(res,'<li>%s = %s</i>' % {k,v})
+        append(res,('<li>%s = %s</i>'):format(k,v))
    end
    append(res,'</ul>')
    return table.concat(res,'\n')

@@ -14,7 +14,8 @@ end
 
 local format = string.format
 
-local function formatx (fmt,...)
+--- version of `string.format` where '%s' uses `tostring`
+function _M.formatx (fmt,...)
     local args = {...}
     local i = 1
     for p in fmt:gmatch('%%.') do
@@ -33,26 +34,30 @@ end
 -- 3. a map of var=value pairs
 -- 4. a function, as in gsub
 -- For the second two cases, it uses $-variable substituion.
-getmetatable("").__mod = function(a, b)
-    if b == nil then
-        return a
-    elseif type(b) == "table" and getmetatable(b) == nil then
-        if #b == 0 then -- assume a map-like table
+function _M.enable_python_formatting()
+    local formatx = _M.formatx
+    getmetatable("").__mod = function(a, b)
+        if b == nil then
+            return a
+        elseif type(b) == "table" and getmetatable(b) == nil then
+            if #b == 0 then -- assume a map-like table
+                return basic_subst(a,b)
+            else
+                return formatx(a,unpack(b))
+            end
+        elseif type(b) == 'function' then
             return basic_subst(a,b)
         else
-            return formatx(a,unpack(b))
+            return formatx(a,b)
         end
-    elseif type(b) == 'function' then
-        return basic_subst(a,b)
-    else
-        return formatx(a,b)
     end
 end
 
 --- really basic templates;
--- t = text.Template 'hello $world'
--- print(t:subst {world = 'dolly'}).
 -- (Templates are callable so subst is unnecessary)
+--
+--     t = text.Template 'hello $world'
+--     print(t:subst {world = 'dolly'}).
 function _M.Template(str)
     local tpl = {s=str}
     function tpl:subst(t)
@@ -66,8 +71,6 @@ function _M.Template(str)
     return tpl
 end
 
-function _M.subst(str,t)
-    return _M.Template(str):subst(t)
-end
+_M.subst = basic_subst
 
 return _M -- orbiter.text

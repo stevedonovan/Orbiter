@@ -72,6 +72,9 @@ local h2,p = html.tags 'h2,p'
 
 function app:handle_dispatch(web,script,args)
     args = args or '/'  -- default is index
+    if current_script and current_script ~= script then
+        html.reset_defaults()
+    end
     current_script = script
     local obj = object_of [script]
     local lfile = script..'.lua'
