@@ -79,6 +79,8 @@ function template.page(file,env)
     if app then file = app.resources..'/'..file end
     local do_cache = env.cache
     do_cache = do_cache==nil and true
+    env.app = nil
+    env.cache = nil
     local tmpl
     if do_cache then tmpl = cache[file] end
     if not tmpl then
@@ -89,6 +91,13 @@ function template.page(file,env)
     end
     if do_cache then cache[file] = tmpl end
     return template.substitute(tmpl,env)
+end
+
+function template.templater (default_env)
+    return function(file,env)
+        for k,v in pairs(default_env) do env[k] = v end
+        return template.page(file,env)
+    end
 end
 
 return template

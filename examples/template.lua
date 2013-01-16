@@ -1,21 +1,26 @@
+-- Using a template rather than htmlfication,
+-- if your HTML skills are strong and/or working with a designer.
+-- See examples/resources/template.ltp for the template.
+-- Orbit templates use a modified version of the famous Rici lake preprocessor.
 local orbiter = require 'orbiter'
-local template = require 'orbiter.template'
 
 local app = orbiter.new()
+
+local page = require'orbiter.template'.templater {
+    cache = true; -- switch off to reflect immediate changes
+    app = app;  -- reference to us - we'll look in our /template dir
+    __parent=_G; -- if you don't feel very strict ;)
+    __dollar='@'; -- better than '$' for JS, esp. JQuery
+}
 
 local data = {
     'oranges','lemons','apples'
 }
 
 function app:index (web)
-    local resp,err = template.page('template.ltp',{
-        cache = true; -- switch off to reflect immediate changes
-        app = app;  -- reference to us - we'll look in our /template dir
+    return page('template.ltp',{
         data = data;
-        __parent=_G; -- if you don't feel very strict ;)
-        __dollar='@'; -- better than '$' for JS, esp. JQuery
     })
-    return resp
 end
 
 app:dispatch_get(app.index,'/')
