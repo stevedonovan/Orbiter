@@ -11,7 +11,7 @@ function _M.type_of(val)
     local tv = type(val)
     if (tv == 'table' or tv=='userdata') and getmetatable(val) then
         return getmetatable(val)
-    else 
+    else
         return tv
     end
 end
@@ -23,11 +23,11 @@ function _M.class(base)
     base = base or Class
     table.update(mt,base)
     mt._base = base
-    mt.__index = mt    
+    mt.__index = mt
     setmetatable(mt,{
         __call = function (cmt,...) -- Type(args) is the constructor
             local obj = {}
-            setmetatable(obj,mt)                
+            setmetatable(obj,mt)
             if obj.init then obj:init(...) end
             return obj
         end
@@ -74,6 +74,7 @@ end
 
 function table.update(t1,t2)
     for k,v in pairs(t2) do t1[k] = v end
+    return t1
 end
 
 function table.force(t)

@@ -56,7 +56,7 @@ local template = {}
 function template.substitute(str,env)
     env = env or {}
     if env.__parent then
-        setmetatable(env,{__index = env._parent})
+        setmetatable(env,{__index = env.__parent})
     end
     local out,res = {}
     parse_dollar = parse1..(env.__dollar or '$')..parse2
@@ -72,11 +72,22 @@ function template.substitute(str,env)
     return table.concat(out)
 end
 
+local cache = {}
+
 function template.page(file,env)
-    local f,err = io.open(file)
-    if not f then return nil, err end
-    local tmpl = f:read '*a'
-    f:close()
+    local app = env.app
+    if app then file = app.resources..'/'..file end
+    local do_cache = env.cache
+    do_cache = do_cache==nil and true
+    local tmpl
+    if do_cache then tmpl = cache[file] end
+    if not tmpl then
+        local f,err = io.open(file)
+        if not f then return nil, err end
+        tmpl = f:read '*a'
+        f:close()
+    end
+    if do_cache then cache[file] = tmpl end
     return template.substitute(tmpl,env)
 end
 
