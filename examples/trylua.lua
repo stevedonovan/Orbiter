@@ -6,6 +6,19 @@ require 'orbiter.libs.jquery'
 
 local lua = orbiter.new(html)
 
+local load = load
+local banner = 'Lua 5.2.1  Copyright (C) 1994-2012 Lua.org, PUC-Rio'
+
+if _VERSION:match '5%.1$' then -- Lua 5.1 compatibility
+    function load(str,name,mode,env)
+        local chunk,err = loadstring(str,name)
+        if chunk then setfenv(chunk,env) end
+        return chunk,err
+    end
+    banner = 'Lua 5.1.4  Copyright (C) 1994-2008 Lua.org, PUC-Rio'
+end
+
+
 local style = [[
             body { font-family: 'Lucida Grande'; font-size: 13px; color: #444; width: 960px; }
             a { color: #333; }
@@ -28,7 +41,7 @@ local script = [[
                         if (line == 'clear') {
                             lua.reset();
                             return;
-                        } 
+                        }
                         var ret = '';
                         $.ajax({
                             data: { code : line }, url: '/request',
@@ -40,7 +53,7 @@ local script = [[
                                 } else {
                                     ret = msg;
                                 }
-                            }, 
+                            },
                             error: function (msg) { ret = 'Epic fail!'; },
                             async: false,
                             timeout: 10000,
@@ -54,7 +67,7 @@ local script = [[
                     },
                     promptHistory: true,
                     autofocus: true,
-                    welcomeMessage: 'Lua 5.1.4  Copyright (C) 1994-2008 Lua.org, PUC-Rio'
+                    welcomeMessage: '%s'
                 });
             });
 ]]
@@ -72,17 +85,17 @@ end
 local env = {
     print = term_print,
 }
-setmetatable(env,{ __index = _G })
+setmetatable(env,{ __index = _G, __newindex = _G})
+
 
 function eval(code)
     local status,val,f,err,rcnt
     print_buff = {}
     code,rcnt = code:gsub('^%s*=','return ')
-    f,err = loadstring(code,'TMP')    
+    f,err = load(code,'TMP','t',env)
     if f then
-        setfenv(f,env)
         status,val = pcall(f)
-        if not status then err = val 
+        if not status then err = val
         else
             if #print_buff > 0 then val = table.concat(print_buff,'\n') end
             return tostring(val)
@@ -101,7 +114,7 @@ function lua:index(web)
         title = 'Try Lua Offline',
         scripts = '/resources/javascript/jquery.console.js',
         inline_style = style,
-        inline_script = script,
+        inline_script = script:format(banner),
         div{id='console',''},
         'off-line version of James Turner\'s ',
         html.link("http://trylua.org","trylua.org"),

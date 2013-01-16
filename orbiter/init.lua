@@ -23,6 +23,8 @@ local function quit(msg)
     os.exit(1)
 end
 
+local unpack = unpack or table.unpack -- Lua 5.2
+
 --- Extract flags from an arguments list.
 -- (grabbed from luarocks.util)
 -- Given string arguments, extract flag arguments into a flags set.
@@ -159,7 +161,7 @@ function _M.set_root (path)
 end
 
 function _M.prepend_root (path)
-    if _M.ROOT and not path:match '^http[s]://' and not starts_with(path,_M.ROOT) then
+    if _M.ROOT and not (path=='#' or path:match '^http[s]://' or starts_with(path,_M.ROOT)) then
         path = _M.ROOT..path
     end
     return path
