@@ -23,7 +23,8 @@ local function quit(msg)
     os.exit(1)
 end
 
-local unpack = unpack or table.unpack -- Lua 5.2
+-- sort out Lua 5.2 compatibility in a brutal way..
+unpack = unpack or table.unpack -- Lua 5.2
 
 --- Extract flags from an arguments list.
 -- (grabbed from luarocks.util)
@@ -158,7 +159,15 @@ end
 
 function _M.set_root (path)
     _M.ROOT = '/'..path
+    _M.SUBSTITUTIONS = {ROOT=_M.ROOT}
 end
+
+setmetatable(_M,{
+    __call = function(self,path)
+        _M.set_root(path)
+        return _M
+    end
+})
 
 function _M.prepend_root (path)
     if _M.ROOT and not (path=='#' or path:match '^http[s]://' or starts_with(path,_M.ROOT)) then

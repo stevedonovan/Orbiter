@@ -47,47 +47,63 @@ end
 
 local defaults = {}
 
+local default_types = {
+    favicon = {tag='link',rtype='shortcut icon',source='href'},
+    styles = {tag='link',rtype='text/css',source='href'},
+    scripts = {tag='script',rtype='text/javascript',source='src'},
+    inline_style = {tag='style',rtype='text/css'},
+    inline_script = {tag='script',rtype='text/javascript'},
+}
+
 function _M.reset_defaults ()
     defaults = {}
 end
 
 function _M.set_defaults(t)
     for k,v in pairs(t) do
+        local ftype = default_types[k]
+        if not ftype then error("unknown default field "..k,2) end
+        if ftype.source then
+            v = orbiter.prepend_root(v)
+        elseif orbiter.SUBSTITUTIONS then
+            v = text.subst(v,orbiter.SUBSTITUTIONS)
+        end
         defaults[k] = concat_list(defaults[k],v)
     end
 end
 
 -- scripts and CSS usually by reference, can be directly embedded
 -- within the document
-local function make_head(head,t,field,tag,rtype,source)
-    local items = concat_list(defaults[field],t[field])
-    if #items == 0 then return end
-    for _,item in ipairs(items) do
-        local hi = {type=rt9993ype}
-        if tag == 'link' then
-            if not rtype:find '/' then -- it's not a MIME type
-                hi.rel = rtype
-            else
-                hi.rel = 'stylesheet'
+local function fill_head(head,t)
+    for field, ftype in pairs(default_types) do
+        local tag,rtype,source = ftype.tag,ftype.rtype,ftype.source
+        local items = concat_list(defaults[field],t[field])
+        if #items ~= 0 then
+            for _,item in ipairs(items) do
+                local hi = {type=rtype}
+                if tag == 'link' then
+                    if not rtype:find '/' then -- it's not a MIME type
+                        hi.rel = rtype
+                    else
+                        hi.rel = 'stylesheet'
+                    end
+                end
+                if source then
+                    hi[source] = item
+                    item = ''
+                end
+                hi[1] = _M.literal(item)
+                append(head,doc.elem(tag,hi))
             end
         end
-        if source then
-            hi[source] = orbiter.prepend_root(item)
-            item = ''
-        end
-        hi[1] = _M.literal(item)
-        append(head,doc.elem(tag,hi))
     end
 end
+
 
 function _M.document(t)
     local head = doc.elem('head',doc.elem('title',t.title or 'Orbiter'))
     t.favicon = t.favicon or '/resources/favicon.ico'
-    make_head(head,t,'favicon','link','shortcut icon','href')
-    make_head(head,t,'styles','link','text/css','href')
-    make_head(head,t,'scripts','script','text/javascript','src')
-    make_head(head,t,'inline_style','style','text/css')
-    make_head(head,t,'inline_script','script','text/javascript')
+    fill_head(head,t)
     if t.refresh then
         append(head,doc.elem('meta',{['http-equiv']='refresh',content=t.refresh}))
     end

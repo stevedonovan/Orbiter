@@ -12,9 +12,9 @@ local ajax_request = '/jq/request'
 
 html.set_defaults {
    scripts = jquery_js,
-   inline_script = ([[
+   inline_script = [[
     function jq_call_server(id,klass,tid) {
-        $.get("%s",{id: id, group_id: tid, klass: klass });
+        $.get("$ROOT/jq/request",{id: id, group_id: tid, klass: klass });
     }
     function jq_file_click(klass,id,tid,event) {
         var href = $('#'+id).attr('title');
@@ -39,7 +39,7 @@ html.set_defaults {
         var form = $("form#"+id);
         $.post(form.attr("action"), form.serialize());
     }
-]]):format(orbiter.prepend_root(ajax_request))
+]],
 }
 
 ---- some useful functions ----
