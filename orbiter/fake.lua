@@ -4,7 +4,7 @@
 -- currently just does GET requests and is hard-wired to write to stdout.
 -- The reader is invited to contemplate the difficulties of doing this in Java or C++.
 
-function fake_new (out,lines)
+local function fake_new (out,lines)
     local client = {}
     function client:receive()
         return table.remove(lines,1)

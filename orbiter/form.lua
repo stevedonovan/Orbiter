@@ -145,12 +145,12 @@ local function generate_control(obj,var,constraint)
                 size = constraint
                 constraint = nil
             end
-            if table.is_plain(constraint) then
+            if util.is_plain(constraint) then
                 local data = constraint
-                if not table.is_list(data) then
+                if not util.is_list(data) then
                     data = constraint.data
                 end
-                if table.is_list(data) then
+                if util.is_list(data) then
                     cntrl = listbox(var,value,data,constraint.size,constraint.multiple)
                     constraint = nil
                 end
@@ -203,7 +203,7 @@ function form.create (self,web)
         for i,item in ipairs(res) do
             tbl[i] = {item.label,item.cntrl}
         end
-        if ftype == 'rows' then tbl = table.transpose(tbl) end
+        if ftype == 'rows' then tbl = util.transpose(tbl) end
         contents = html.table{  data = tbl }
     elseif spec.type == 'list' or spec.type == 'line' then
         local items = {}
@@ -282,7 +282,7 @@ function form.validate (self,values)
     if not ok then
         return false
     else -- only do this if everything is fine!
-        table.update(self.obj,res)
+        util.update(self.obj,res)
         return true
     end
 end

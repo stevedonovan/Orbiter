@@ -9,9 +9,7 @@ local doc = require 'orbiter.doc'
 local text = require 'orbiter.text'
 local util = require 'orbiter.util'
 local append = table.insert
-
-local imap,concat_list,reshape2D  = table.imap,table.concat_list,table.reshape2D
-
+local is_table,imap,concat_list,reshape2D  = util.is_table,util.imap,util.concat_list,util.reshape2D
 local compose = util.compose
 
 _M.is_doc = doc.is_tag
@@ -54,6 +52,7 @@ local default_types = {
     inline_style = {tag='style',rtype='text/css'},
     inline_script = {tag='script',rtype='text/javascript'},
 }
+local default_types_order = {'favicon','scripts','styles','inline_style','inline_script'}
 
 function _M.reset_defaults ()
     defaults = {}
@@ -63,11 +62,6 @@ function _M.set_defaults(t)
     for k,v in pairs(t) do
         local ftype = default_types[k]
         if not ftype then error("unknown default field "..k,2) end
-        if ftype.source then
-            v = orbiter.prepend_root(v)
-        elseif orbiter.SUBSTITUTIONS then
-            v = text.subst(v,orbiter.SUBSTITUTIONS)
-        end
         defaults[k] = concat_list(defaults[k],v)
     end
 end
@@ -75,7 +69,8 @@ end
 -- scripts and CSS usually by reference, can be directly embedded
 -- within the document
 local function fill_head(head,t)
-    for field, ftype in pairs(default_types) do
+    for _,field in ipairs(default_types_order) do
+        local ftype = default_types[field]
         local tag,rtype,source = ftype.tag,ftype.rtype,ftype.source
         local items = concat_list(defaults[field],t[field])
         if #items ~= 0 then
@@ -89,7 +84,7 @@ local function fill_head(head,t)
                     end
                 end
                 if source then
-                    hi[source] = item
+                    hi[source] = orbiter.prepend_root(item)
                     item = ''
                 end
                 hi[1] = _M.literal(item)
@@ -111,7 +106,7 @@ function _M.document(t)
     local xmlns
     if t.xml then xmlns = "http://www.w3.org/1999/xhtml" end
 
-    local body = table.copy_list(data)
+    local body = util.copy_list(data)
     return doc.elem('html',{xmlns=xmlns,head,doc.elem('body',body)})
 end
 
@@ -143,9 +138,9 @@ end
 
 function _M.specialize (fun,defaults)
     return function(tbl)
-        tbl = table.copy(table.force(tbl))
-        table.update(tbl,defaults)
-        local k = table.index_of(tbl,1)
+        tbl = util.copy(util.force(tbl))
+        util.update(tbl,defaults)
+        local k = util.index_of(tbl,1)
         if k then
             tbl[k] = tbl[1]
             tbl[1] = nil
@@ -171,12 +166,12 @@ function _M.enable_concatenation_is_composition()
 end
 
 local function _tags (list)
-    if type(list) == 'table' and type(list[1])=='table' then
+    if is_table(list) and is_table(list[1]) then
         local res = {}
         for i,item in ipairs(list) do res[i] = item[1] end
         res = {doc.tags(res)}
         for i,ctor in ipairs(res) do
-            local defs = table.copy_map(list[i])
+            local defs = util.copy_map(list[i])
             res[i] = _M.specialize(ctor,defs)
         end
         return unpack(res)
@@ -198,7 +193,7 @@ local a,img = doc.tags 'a,img'
 
 function _M.link(addr,text)
     local id,class,style,title,alt,onclick = nil
-    if type(addr) == 'table' then addr,text,id,class,style,title,alt,onclick = addr[1],addr[2],addr.id,addr.class,addr.style,addr.title,addr.alt,addr.onclick end
+    if is_table(addr) then addr,text,id,class,style,title,alt,onclick = addr[1],addr[2],addr.id,addr.class,addr.style,addr.title,addr.alt,addr.onclick end
     if not text then text = addr end
     addr = orbiter.prepend_root(addr)
     return a{id=id,href=addr,class=class,style=style,title=title,alt=alt,onclick=onclick,text}
@@ -243,7 +238,7 @@ local function copy_common(src,dest)
 end
 
 local function table_arg(t)
-    assert(type(t) == 'table')
+    assert(is_table(t))
     local data = t
     if t.data then
         data = t.data

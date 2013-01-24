@@ -29,16 +29,17 @@ local function parseDollarParen(pieces, chunk, s, e)
 end
 -------------------------------------------------------------------------------
 local function parseHashLines(chunk)
-    local pieces, s, args = chunk:find("^\n*#ARGS%s*(%b())[ \t]*\n")
+    local find = string.find
+    local pieces, s, args = find(chunk,"^\n*#ARGS%s*(%b())[ \t]*\n")
     if not args or find(args, "^%(%s*%)$") then
         pieces, s = {"return function(_put) ", n = 1}, s or 1
     else
         pieces = {"return function(_put, ", args:sub(2), n = 2}
     end
     while true do
-        local ss, e, lua = chunk:find ("^#+([^\n]*\n?)", s)
+        local ss, e, lua = find (chunk,"^#+([^\n]*\n?)", s)
         if not e then
-            ss, e, lua = chunk:find("\n#+([^\n]*\n?)", s)
+            ss, e, lua = find(chunk,"\n#+([^\n]*\n?)", s)
             append(pieces, "_put(")
             parseDollarParen(pieces, chunk:sub(s, ss))
             append(pieces, ")")

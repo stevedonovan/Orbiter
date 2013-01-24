@@ -24,7 +24,11 @@ local function quit(msg)
 end
 
 -- sort out Lua 5.2 compatibility in a brutal way..
-unpack = unpack or table.unpack -- Lua 5.2
+if not unpack then
+    rawset(_G,'unpack',rawget(table,'unpack'))
+end
+
+local trace
 
 --- Extract flags from an arguments list.
 -- (grabbed from luarocks.util)
@@ -129,7 +133,7 @@ local function which(prog)
     return shell ('which %s 2> /dev/null' % prog)
 end
 
-function launch_browser (url,browser)
+local function launch_browser (url,browser)
     if browser == true then
         browser = nil -- autodetect!
     end
@@ -306,7 +310,7 @@ function _M.remove_request_filter(f)
     for i, ff in ipairs(request_filters) do
         if ff == f then idx = i; break end
     end
-    if idx then table.remove(request_filter,idx) end
+    if idx then table.remove(request_filters,idx) end
 end
 
 function _M.get_pattern_table()
@@ -696,6 +700,14 @@ function MT:run(...)
 
     if fake then
         addr = fake==true and '/' or fake
+    end
+
+    if self.env then
+        for k,v in pairs(self) do
+            if type(v) == 'function' then
+                setfenv(v,self.env)
+            end
+        end
     end
 
     -- create TCP socket on addr:port: allow for a debug hook

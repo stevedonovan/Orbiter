@@ -337,14 +337,14 @@ function Doc:matching_tags(tag, xmlns)
     local start_i, max_i = 1, #tags;
     return function ()
             for i=start_i,max_i do
-                v = tags[i];
+                local v = tags[i];
                 if (not tag or v.tag == tag)
                 and (not xmlns or xmlns == v.attr.xmlns) then
                     start_i = i+1;
                     return v;
                 end
             end
-        end, tags, i;
+        end, tags;
 end
 
 --- iterate over all child elements of a document node.

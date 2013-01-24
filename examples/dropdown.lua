@@ -6,9 +6,7 @@ local calendar = require 'orbiter.controls.calendar'
 -- 'us' mm/dd/yyyy, 'eu' 'dd-mm-yyyy' or 'db' 'yyyy-mm-dd'
 calendar.set_mode 'eu'
 
-local self = orbiter.new(html)
-
-local h2,form,hr,div,p = html.tags 'h2,form,hr,div,p'
+local self = orbiter.new(html,'tags')
 
 function self:index()
     return html {
@@ -25,8 +23,9 @@ function self:index()
     },
     p(),
     form { name = 'form1',
-        'A date entry field', calendar.date('form1','text1')    
+        'A date entry field', calendar.date('form1','text1')
     },
+    H3 'Credits',
     p{"Drop-down menu by",html.link('http://javascript-array.com/')},
     p{"Calendar control by",html.link("http://www.softcomplex.com/products/tigra_calendar/")},
 }
