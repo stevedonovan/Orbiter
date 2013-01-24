@@ -71,12 +71,11 @@ local self
 
 function _M.new(...)
     local extensions = {...}
-    local obj
+    local obj = extensions[1]
     -- if passed a table which doesn't have register, then assume we're being called
     --    from module()
     -- use the module as the object, and manually add our methods to it.
-    if extensions[1] and not extensions[1].register then
-        obj = extensions[1]
+    if obj and type(obj) ~= 'string' and not obj.register then
         local m = extensions[1]
         for k,v in pairs(MT) do m[k] = v end
         table.remove(extensions,1)

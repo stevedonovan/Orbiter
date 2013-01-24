@@ -226,12 +226,12 @@ end
 -- @param list  a list of names, or a comma-separated string.
 -- @usage local parent,children = doc.tags 'parent,children' <br>
 --  doc = parent {child 'one', child 'two'}
-function _M.tags(list)
+function _M.tags(list,f)
     local ctors = {}
-    local elem = _M.elem
     if type(list) == 'string' then list = split(list,',') end
     for _,tag in ipairs(list) do
         local ctor = function(items) return _M.elem(tag,items) end
+        if f then ctor = f(ctor) end
         t_insert(ctors,ctor)
     end
     return unpack(ctors)

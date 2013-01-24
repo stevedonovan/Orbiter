@@ -1,12 +1,11 @@
 local orbiter = require 'orbiter'
-local html = require 'orbiter.html'
 local dropdown = require 'orbiter.controls.dropdown'
 local calendar = require 'orbiter.controls.calendar'
 
 -- 'us' mm/dd/yyyy, 'eu' 'dd-mm-yyyy' or 'db' 'yyyy-mm-dd'
 calendar.set_mode 'eu'
 
-local self = orbiter.new(html,'tags')
+local self = orbiter.new('html','tags')
 
 function self:index()
     return html {

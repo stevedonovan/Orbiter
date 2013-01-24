@@ -119,12 +119,12 @@ local html5_tags = {
    wbr = true,
 }
 
-local tag = html.tags
-local env,_G = {},_G
+local tag,rawget = html.tags,rawget
+local env,_G = {html=html},_G
 
-setmetatable(env,{
+_M.env = {
     __index = function(t,name)
-        local g = _G[name]
+        local g = rawget(_G,name) -- in case of strict mode!
         if g then return g end
         -- see if it's an HTML tag!
         name = name:lower()
@@ -135,7 +135,9 @@ setmetatable(env,{
         end
         return rawget(env,name)
     end
-})
+}
+
+setmetatable(env,_M.env)
 
 function _M.use ()
     setfenv(2,env)

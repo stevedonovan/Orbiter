@@ -165,18 +165,33 @@ function _M.enable_concatenation_is_composition()
     })
 end
 
+local dtags = doc.tags
+
+local TMT = {
+    __call = function(self,...) return self.tag(...) end;
+    __index = function(self,name)
+        local res = _M.specialize(self.tag,{class=name})
+        self[name] = res
+        return res
+    end;
+}
+
+local function _tag_object(tag)
+    return setmetatable({tag=tag},TMT)
+end
+
 local function _tags (list)
     if is_table(list) and is_table(list[1]) then
         local res = {}
         for i,item in ipairs(list) do res[i] = item[1] end
-        res = {doc.tags(res)}
+        res = {dtags(res)}
         for i,ctor in ipairs(res) do
             local defs = util.copy_map(list[i])
             res[i] = _M.specialize(ctor,defs)
         end
         return unpack(res)
     else
-        return doc.tags(list)
+        return dtags(list,_tag_object)
     end
 end
 
