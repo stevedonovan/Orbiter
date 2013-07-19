@@ -16,23 +16,23 @@ The Orbiter project has two legs, which are of equal importance but unequal leng
 
 Orbiter applications read very much like Orbit applications, with the emphasis shifted away from `module` and the application object becoming an instance of a general application class object.
 
-  -- hello.lua
-  local orbiter = require 'orbiter'
-  local app = orbiter.new()
+    -- hello.lua
+    local orbiter = require 'orbiter'
+    local app = orbiter.new()
 
-  function app:index(web)
-    return [[
-      <html><head><title>Hello from Orbiter</title></head>
-      <body>
-        <h2>Hello, World!</h2>
-      </body></html>
-    ]]
-  end
+    function app:index(web)
+      return [[
+        <html><head><title>Hello from Orbiter</title></head>
+        <body>
+          <h2>Hello, World!</h2>
+        </body></html>
+      ]]
+    end
 
-  app:dispatch_get(app.index,'/')
+    app:dispatch_get(app.index,'/')
 
-  return app:run(...)  
-  
+    return app:run(...)
+
 The runtime difference is that `hello.lua` is an _application_, not a module intended to be loaded into a WSAPI context. With the `--launch` flag it will even launch the browser after starting the built-in server.  Generally this change makes it easier to debug Orbiter applications, and certainly easier to _embed_ into an application with embedded Lua.  Such an application can have Orbiter scripts which directly drive the application through its own internal API.
   
 ### Generating HTML as LOM Documents
@@ -50,7 +50,7 @@ The second leg of Orbiter is a high-level library for generating HTML using LOM 
        tr {
           td '21', td '22'
        }
-   })
+    })
 
 Another key difference is that these tag constructors do not generate text directly but construct a LOM tree; LOM documents have a `__tostring` metamethod which renders them as pretty-printed HTML.  (The HTML produced by Orbit htmlfication is harder to read and requires 'beautification')
 
